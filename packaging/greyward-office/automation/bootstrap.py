@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import sys
 
 from candidate import validate_sources
 from model import UTC, new_state, timestamp
@@ -21,7 +22,7 @@ def export(repo, output):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(source.read_bytes().replace(b'\r\n', b'\n'))
     for name in ('LICENSE', '.gitleaks.toml'):
-        if (repo / name).is_file(): shutil.copyfile(repo / name, output / name)
+        if (repo / name).is_file(): (output / name).write_bytes((repo / name).read_bytes().replace(b'\r\n', b'\n'))
     (output / 'tests/__init__.py').write_text('')
     workflows = output / '.github/workflows'; workflows.mkdir(parents=True)
     for original, name in [('workflow.yml', 'office.yml'), ('office-app.yml', 'office-app.yml'), ('validation.yml', 'validation.yml')]:
@@ -53,11 +54,17 @@ def export(repo, output):
         '[GREYWARD](https://github.com/MANTIS-devlab/GREYWARD), not a development-machine image.\n'
         , newline='\n')
     (output / '.gitattributes').write_text('* text=auto eol=lf\n', newline='\n')
+    (output / '.gitignore').write_text('__pycache__/\n*.pyc\ncandidate/\nincoming/\nresult/\n', newline='\n')
     inventory = [{'path': p.relative_to(output).as_posix(), 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
                  for p in sorted(output.rglob('*')) if p.is_file()]
     (output / 'component-export.json').write_text(json.dumps({'schema': 'greyward.office-component-export/v1',
                                                             'files': inventory}, indent=2) + '\n', newline='\n')
-    validate_sources(output)
+    previous = sys.dont_write_bytecode
+    try:
+        sys.dont_write_bytecode = True
+        validate_sources(output)
+    finally:
+        sys.dont_write_bytecode = previous
     return len(inventory)
 
 

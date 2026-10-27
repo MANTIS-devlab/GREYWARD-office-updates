@@ -18,8 +18,12 @@
       "sha256": "c77c9d7dd00a093d2c21647032391dd31ef3ec7becc572139f037f18fc197a15"
     },
     {
+      "path": ".gitignore",
+      "sha256": "443fd405f488b90e9fa8d14201b0033c65fa97fd595c7547b4e927ac9ce15a78"
+    },
+    {
       "path": ".gitleaks.toml",
-      "sha256": "f30545421b39c8564bf4cf187b81119b1f4fdb2e177b2b77cf386b46a16ed5b8"
+      "sha256": "081954f05e1cd7a082ec1aa55bd5dbf2cc49f5f602687c87f9ef0ab7c533330b"
     },
     {
       "path": "branding/source/greyward-pdf-document.svg",
@@ -63,7 +67,7 @@
     },
     {
       "path": "LICENSE",
-      "sha256": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809"
+      "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
     },
     {
       "path": "packaging/greyward-office/artwork.py",
@@ -71,7 +75,7 @@
     },
     {
       "path": "packaging/greyward-office/automation/bootstrap.py",
-      "sha256": "5609f0b8ae17f5cfa9c2860716ad2fd9c42fe653e42b6d54251a54a228dfb10d"
+      "sha256": "fc07fcc4c3df3a65ac96f492dadcffeb1f04d653a7f8d12ad9a512a4f4bd20be"
     },
     {
       "path": "packaging/greyward-office/automation/candidate.py",
