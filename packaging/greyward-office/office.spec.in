@@ -1,0 +1,118 @@
+# Bound packaging workers as well as Cargo. Moderate zstd compression avoids
+# debug-package compression exhausting the isolated builder's memory budget.
+%global _smp_build_ncpus 2
+%global _binary_payload w6T2.zstdio
+%global _source_payload w6T2.zstdio
+
+Name:           @package@
+Version:        @version@
+Release:        @release@%{?dist}
+Summary:        GREYWARD @name@, based on @upstream@
+License:        @license@
+URL:            https://github.com/storytold/@upstream@
+Source0:        @sourceName@.tar.gz
+BuildRequires:  gcc-c++, pkgconfig(alsa), pkgconfig(fontconfig), pkgconfig(xkbcommon)
+Requires:       cups-client, xdg-utils
+Requires:       greyward-security-center
+Requires:       libxkbcommon, libwayland-client, libX11, libXcursor, libXi, libXrandr
+Requires:       libglvnd-egl, vulkan-loader
+Requires:       shared-mime-info
+
+%description
+Independent GREYWARD @name@ application based on @upstream@.
+Updates are supplied through GREYWARD Update Center. No automation listener
+or AI service is enabled by this integration.
+
+%prep
+%autosetup -n @sourceName@
+# Some upstream crate archives mark Rust source as executable. These files are
+# compiler input, not scripts; normalize their mode before RPM debug-source QA.
+find . -type f -name '*.rs' -exec chmod a-x {} +
+
+%build
+test "$(rustc --version | cut -d' ' -f2)" = '@rustVersion@'
+test "$(%{cargo} --version | cut -d' ' -f2)" = '@rustVersion@'
+export CARGO_BUILD_JOBS=2
+export CRAFT_FONTS_DIR="$PWD/greyward-fonts"
+export CRAFT_FONTS_REQUIRED=1
+export @envPrefix@_BUILD_SHA='@commit@'
+%{cargo} build --release --locked --offline -p @upstream@ -p @upstream@-cli
+
+%install
+install -Dm0755 "$CARGO_TARGET_DIR/release/@upstream@" %{buildroot}%{_libexecdir}/greyward-office/@upstream@
+install -d %{buildroot}%{_bindir}
+cat > %{buildroot}%{_bindir}/greyward-@slug@ <<'LAUNCHER'
+#!/usr/bin/env bash
+set -euo pipefail
+# Normal desktop launches never inherit a developer's automation listener.
+unset WORDCRAFT_CONTROL_PORT GRIDCRAFT_CONTROL_PORT PDFCRAFT_CONTROL_PORT DECKCRAFT_CONTROL_PORT
+if [[ '@slug@' == pdf ]]; then
+  export PDFCRAFT_MODELS="${PDFCRAFT_MODELS:-/usr/share/greyward/office/pdf/models}"
+fi
+exec /usr/libexec/greyward-office/@upstream@ "$@"
+LAUNCHER
+chmod 0755 %{buildroot}%{_bindir}/greyward-@slug@
+install -d %{buildroot}%{_datadir}/applications
+cat > %{buildroot}%{_datadir}/applications/@appId@.desktop <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=@name@
+Comment=GREYWARD @name@
+Exec=greyward-@slug@ @fileArgument@
+Icon=@appId@
+StartupWMClass=@appId@
+Terminal=false
+Categories=Office;@category@;
+MimeType=@mimes@
+DESKTOP
+install -Dm0644 greyward-branding/document-mime.xml %{buildroot}%{_datadir}/mime/packages/@appId@.xml
+install -Dm0644 greyward-branding/document.svg %{buildroot}%{_datadir}/icons/hicolor/scalable/mimetypes/greyward-@slug@-document.svg
+install -Dm0644 greyward-branding/document.svg %{buildroot}%{_datadir}/icons/Greyward/scalable/mimetypes/greyward-@slug@-document.svg
+if test -f greyward-branding/upstream-mime.xml; then
+  install -Dm0644 greyward-branding/upstream-mime.xml %{buildroot}%{_datadir}/greyward/office/@slug@/upstream-mime.xml
+fi
+install -Dm0644 greyward-branding/application.svg %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/@appId@.svg
+for size in 16 24 32 48 64 128 256 512; do
+  install -Dm0644 greyward-branding/$size.png %{buildroot}%{_datadir}/icons/hicolor/${size}x${size}/apps/@appId@.png
+done
+install -Dm0644 greyward-provenance.json %{buildroot}%{_datadir}/greyward/office/@slug@/provenance.json
+if test -d greyward-models; then
+  cp -a greyward-models %{buildroot}%{_datadir}/greyward/office/@slug@/models
+fi
+install -d %{buildroot}%{_datadir}/doc/%{name}
+printf '%s\n' 'GREYWARD @name@ is based on @upstream@ by the ArtCraft team.' \
+  'Upstream source and contributors: https://github.com/storytold/@upstream@' \
+  'GREYWARD artwork is original. This modified build is not an official ArtCraft product.' \
+  > %{buildroot}%{_datadir}/doc/%{name}/ATTRIBUTION
+
+%check
+export CARGO_BUILD_JOBS=2
+export CRAFT_FONTS_DIR="$PWD/greyward-fonts"
+export CRAFT_FONTS_REQUIRED=1
+export @envPrefix@_BUILD_SHA='@commit@'
+if test '@upstream@' = wordcraft; then
+  %{cargo} test --release --locked --offline -p wordcraft-ui-egui interface_theme
+fi
+# RPM's normal post-install processing runs before this receipt is sealed.
+python3 - '%{buildroot}' '@slug@' <<'RECEIPT'
+import hashlib, json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+receipt = root / 'usr/share/greyward/office' / sys.argv[2] / 'provenance.json'
+data = json.loads(receipt.read_text())
+data['payloadFiles'] = {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                        for p in sorted(root.rglob('*')) if p.is_file() and p != receipt
+                        and not p.relative_to(root).as_posix().startswith(('usr/lib/debug/', 'usr/src/debug/'))}
+receipt.write_text(json.dumps(data, indent=2) + '\n')
+RECEIPT
+
+%files
+%license LICENSE* NOTICE greyward-licenses
+%{_bindir}/greyward-@slug@
+%{_libexecdir}/greyward-office/@upstream@
+%{_datadir}/applications/@appId@.desktop
+%{_datadir}/mime/packages/@appId@.xml
+%{_datadir}/icons/hicolor/scalable/mimetypes/greyward-@slug@-document.svg
+%{_datadir}/icons/Greyward/scalable/mimetypes/greyward-@slug@-document.svg
+%{_datadir}/icons/hicolor/*/apps/@appId@.*
+%{_datadir}/greyward/office/@slug@
+%{_datadir}/doc/%{name}

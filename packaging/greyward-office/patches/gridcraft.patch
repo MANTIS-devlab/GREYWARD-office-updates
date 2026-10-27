@@ -1,0 +1,838 @@
+diff --git a/apps/gridcraft/src/main.rs b/apps/gridcraft/src/main.rs
+index 6c0d2f6..018d464 100644
+--- a/apps/gridcraft/src/main.rs
++++ b/apps/gridcraft/src/main.rs
+@@ -104,7 +104,8 @@ fn load_prefs(app: &mut SheetApp) {
+     // First run (or a ui.json without a usable language): follow the desktop's language.
+     app.ui.language = gridcraft_ui_egui::i18n::Language::system();
+     // ...and its light or dark appearance (#239), until a theme is chosen and saved in ui.json.
+-    app.ui.system_theme = true;
++    app.ui.system_theme = false;
++    app.ui.dark = true;
+     let Some(dir) = config_dir() else { return };
+     if let Ok(b) = std::fs::read(dir.join("ui.json"))
+         && let Ok(ui) = serde_json::from_slice::<gridcraft_ui_egui::UiState>(&b)
+@@ -309,10 +310,10 @@ fn main() -> eframe::Result<()> {
+         app.open_path(f);
+     }
+     let mut viewport = egui::ViewportBuilder::default()
+-        .with_title("GridCraft")
++        .with_title("Sheets")
+         .with_inner_size([1440.0, 900.0])
+         .with_min_inner_size([640.0, 420.0])
+-        .with_app_id("ai.storyteller.gridcraft")
++        .with_app_id("systems.mantis.greyward.Sheets")
+         .with_drag_and_drop(true);
+     if cfg!(target_os = "macos") {
+         viewport = viewport.with_fullsize_content_view(true).with_titlebar_shown(false).with_title_shown(false);
+@@ -344,7 +345,7 @@ fn main() -> eframe::Result<()> {
+     let pending = std::cell::Cell::new(Some(app));
+     let run = |options: eframe::NativeOptions| {
+         eframe::run_native(
+-            "GridCraft",
++            "Sheets",
+             options,
+             Box::new(|cc| {
+                 let Some(mut app) = pending.take() else {
+diff --git a/crates/ui-egui/src/backstage.rs b/crates/ui-egui/src/backstage.rs
+index f5bdc20..f688142 100644
+--- a/crates/ui-egui/src/backstage.rs
++++ b/crates/ui-egui/src/backstage.rs
+@@ -896,13 +896,13 @@ pub fn export_as(app: &mut SheetApp, fmt: &str) -> bool {
+         return match app.run(id, json!({"path": path})) {
+             Ok(_) => true,
+             Err(e) => {
+-                app.message = Some(("GridCraft".into(), crate::clean_error(&e)));
++                app.message = Some(("Sheets".into(), crate::clean_error(&e)));
+                 false
+             }
+         };
+     }
+     if app.services.download.is_none() {
+-        app.message = Some(("GridCraft".into(), "Exporting needs a file picker, which this window doesn't have.".into()));
++        app.message = Some(("Sheets".into(), "Exporting needs a file picker, which this window doesn't have.".into()));
+         return false;
+     }
+     if fmt == "pdf" {
+@@ -910,7 +910,7 @@ pub fn export_as(app: &mut SheetApp, fmt: &str) -> bool {
+         return match app.run(id, json!({})) {
+             Ok(_) => true,
+             Err(e) => {
+-                app.message = Some(("GridCraft".into(), crate::clean_error(&e)));
++                app.message = Some(("Sheets".into(), crate::clean_error(&e)));
+                 false
+             }
+         };
+@@ -929,7 +929,7 @@ pub fn export_as(app: &mut SheetApp, fmt: &str) -> bool {
+             }
+         }
+         Err(e) => {
+-            app.message = Some(("GridCraft".into(), crate::clean_error(&e)));
++            app.message = Some(("Sheets".into(), crate::clean_error(&e)));
+             false
+         }
+     }
+@@ -1024,7 +1024,7 @@ fn account(app: &mut SheetApp, ui: &mut Ui) {
+     let t = Tokens::get(ui.ctx());
+     let lang = app.ui.language;
+     section(ui, lang, "Product Information");
+-    ui.label(RichText::new("GridCraft").font(theme::ui_bold(16.0)).color(t.text));
++    ui.label(RichText::new("Sheets").font(theme::ui_bold(16.0)).color(t.text));
+     ui.add_space(8.0);
+     egui::Grid::new("backstage_account").num_columns(2).spacing(vec2(18.0, 8.0)).show(ui, |ui| {
+         for (label, value) in
+@@ -1037,13 +1037,13 @@ fn account(app: &mut SheetApp, ui: &mut Ui) {
+     });
+     ui.add_space(18.0);
+     ui.horizontal(|ui| {
+-        if square_button(ui, Icon::Info, lang.tr("About GridCraft")).clicked() {
++        if square_button(ui, Icon::Info, lang.tr("About Sheets")).clicked() {
+             app.open_dialog("about", json!({}));
+         }
+         ui.add_space(12.0);
+         ui.vertical(|ui| {
+             ui.add_space(14.0);
+-            ui.label(RichText::new(lang.tr("About GridCraft")).font(theme::ui_bold(13.5)).color(t.text));
++            ui.label(RichText::new(lang.tr("About Sheets")).font(theme::ui_bold(13.5)).color(t.text));
+             dim(ui, lang.tr("Version, contributors and the AI models that helped"));
+         });
+     });
+diff --git a/crates/ui-egui/src/dialogs.rs b/crates/ui-egui/src/dialogs.rs
+index 7b069e5..d72050d 100644
+--- a/crates/ui-egui/src/dialogs.rs
++++ b/crates/ui-egui/src/dialogs.rs
+@@ -860,7 +860,7 @@ impl Dialog {
+             "commandSearch" => Dialog::custom("commandSearch", "Search Commands", json!({})),
+             "agents" => Dialog::custom("agents", "Agent Control", json!({})),
+             "about" => {
+-                let mut d = Dialog::custom("about", "About GridCraft", json!({}));
++                let mut d = Dialog::custom("about", "About Sheets", json!({}));
+                 d.tab = match p("tab").as_str() {
+                     Some(t @ ("Contributors" | "Models")) => t.to_string(),
+                     _ => "About".into(),
+@@ -962,7 +962,7 @@ impl Dialog {
+             "pickList" => Dialog::custom("pickList", "Pick From List", json!({})),
+             "saveCopy" => Dialog::custom("saveCopy", "Save a Copy", json!({"format": p("format")})),
+             "saveChanges" => Dialog::custom("saveChanges", "Save Changes?", json!({"title": p("title"), "quit": p("quit")})),
+-            "start" => Dialog::custom("start", "GridCraft", json!({})),
++            "start" => Dialog::custom("start", "Sheets", json!({})),
+             "comments" => {
+                 app.grid.pane = None;
+                 app.run_or_alert("review.showComments", json!({"on": true}));
+@@ -1308,7 +1308,7 @@ pub fn show(app: &mut SheetApp, ctx: &egui::Context) {
+                 "solverResults" => solver_results(app, ui, &mut d, &mut open),
+                 "spelling" => spelling(app, ui, &mut d, &mut open),
+                 "agents" => {
+-                    ui.label("GridCraft is fully drivable by agents. Every menu item, button and gesture is a command:");
++                    ui.label("Sheets is fully drivable by agents. Every menu item, button and gesture is a command:");
+                     ui.add_space(4.0);
+                     ui.monospace("gridcraft --control 7979        # JSON-lines control channel\ngridcraft-cli mcp --connect 7979   # MCP bridged to this window\ngridcraft-cli mcp                   # headless MCP server");
+                     ui.add_space(4.0);
+@@ -1875,10 +1875,10 @@ fn about(ui: &mut egui::Ui, d: &mut Dialog) {
+         "Contributors" => crate::credits::contributors_ui(ui),
+         "Models" => crate::credits::models_ui(ui),
+         _ => {
+-            ui.heading("GridCraft");
++            ui.heading("Sheets");
+             ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
+             ui.add_space(4.0);
+-            ui.label("A clean-room, open-source, Rust-native spreadsheet. Part of ArtCraft.");
++            ui.label("A clean-room, open-source, Rust-native spreadsheet. GREYWARD integration based on GridCraft by the ArtCraft team.");
+             ui.hyperlink_to("getartcraft.com/apps/gridcraft", "https://getartcraft.com/apps/gridcraft");
+             ui.hyperlink_to("Join the ArtCraft Discord", "https://discord.gg/artcraft");
+         }
+@@ -1889,7 +1889,7 @@ fn about(ui: &mut egui::Ui, d: &mut Dialog) {
+ /// preserved VBA project. Mirrors Excel's Developer ▸ Macros list, but is honest that VBA is
+ /// preserved and not executed.
+ fn macros(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog) {
+-    ui.label("Automation in this workbook. GridCraft runs its own scripts; a file's VBA project is preserved but not executed.");
++    ui.label("Automation in this workbook. Sheets runs its own scripts; a file's VBA project is preserved but not executed.");
+     ui.add_space(6.0);
+     let items: Vec<Json> = d.result.as_ref().and_then(Json::as_array).cloned().unwrap_or_default();
+     if items.is_empty() {
+diff --git a/crates/ui-egui/src/formula_bar.rs b/crates/ui-egui/src/formula_bar.rs
+index 49e0f89..8883b95 100644
+--- a/crates/ui-egui/src/formula_bar.rs
++++ b/crates/ui-egui/src/formula_bar.rs
+@@ -217,7 +217,7 @@ fn name_box(app: &mut SheetApp, ui: &mut egui::Ui, t: &Tokens) -> Rect {
+                     app.run("formulas.defineName", json!({"name": target}))
+                 };
+                 if let Err(e) = r {
+-                    app.message = Some(("GridCraft".into(), crate::clean_error(&e)));
++                    app.message = Some(("Sheets".into(), crate::clean_error(&e)));
+                 }
+                 app.grid.ensure_visible = true;
+             }
+diff --git a/crates/ui-egui/src/grid.rs b/crates/ui-egui/src/grid.rs
+index c4c3888..559895a 100644
+--- a/crates/ui-egui/src/grid.rs
++++ b/crates/ui-egui/src/grid.rs
+@@ -2426,7 +2426,7 @@ fn interact(app: &mut SheetApp, ui: &mut egui::Ui, resp: &egui::Response, geo: &
+                     Ok(_) => return,
+                     Err(e) if e == not_a_value_cell => {}
+                     Err(e) => {
+-                        app.message = Some(("GridCraft".into(), crate::clean_error(&e)));
++                        app.message = Some(("Sheets".into(), crate::clean_error(&e)));
+                         return;
+                     }
+                 }
+@@ -2622,7 +2622,7 @@ fn interact(app: &mut SheetApp, ui: &mut egui::Ui, resp: &egui::Response, geo: &
+                     let mode = if mods.command { "alternate" } else { "series" };
+                     match app.run("edit.autoFill", json!({"source": src.a1(), "target": t.a1(), "mode": mode})) {
+                         Ok(_) => set_fill_tag(app, src, t),
+-                        Err(e) => app.message = Some(("GridCraft".into(), crate::clean_error(&e))),
++                        Err(e) => app.message = Some(("Sheets".into(), crate::clean_error(&e))),
+                     }
+                 }
+             }
+@@ -2643,7 +2643,7 @@ fn interact(app: &mut SheetApp, ui: &mut egui::Ui, resp: &egui::Response, geo: &
+             }
+             Drag::MoveCols { source, before: Some(before) } => {
+                 if let Err(e) = app.run("sheet.moveColumns", json!({"cols": source.a1(), "before": before})) {
+-                    app.message = Some(("GridCraft".into(), crate::clean_error(&e)));
++                    app.message = Some(("Sheets".into(), crate::clean_error(&e)));
+                 }
+             }
+             _ => {}
+@@ -2695,7 +2695,7 @@ fn format_painter_apply(app: &mut SheetApp) {
+         if let Some(dest) = dest
+             && let Err(e) = app.run("edit.formatPainter", json!({"apply": dest}))
+         {
+-            app.message = Some(("GridCraft".into(), crate::clean_error(&e)));
++            app.message = Some(("Sheets".into(), crate::clean_error(&e)));
+         }
+     }
+ }
+@@ -3542,14 +3542,14 @@ fn fill_options_tag(app: &mut SheetApp, ui: &mut egui::Ui, geo: &Geo, sh: &Sheet
+     if let Some(mode) = chosen {
+         if let Err(e) = app.run("edit.undo", json!({})) {
+             app.grid.fill_tag = None;
+-            app.message = Some(("GridCraft".into(), crate::clean_error(&e)));
++            app.message = Some(("Sheets".into(), crate::clean_error(&e)));
+             return;
+         }
+         match app.run("edit.autoFill", json!({"source": tag.src.a1(), "target": tag.target.a1(), "mode": mode})) {
+             Ok(_) => set_fill_tag(app, tag.src, tag.target),
+             Err(e) => {
+                 app.grid.fill_tag = None;
+-                app.message = Some(("GridCraft".into(), crate::clean_error(&e)));
++                app.message = Some(("Sheets".into(), crate::clean_error(&e)));
+             }
+         }
+     }
+@@ -3577,7 +3577,7 @@ fn fill_menu(app: &mut SheetApp, ui: &mut egui::Ui, was_open: bool) {
+                         let direction = if target.width() != src.width() { "rows" } else { "columns" };
+                         app.open_dialog("series", json!({"direction": direction}));
+                     } else if let Err(e) = app.run("edit.autoFill", json!({"source": src.a1(), "target": target.a1(), "mode": mode})) {
+-                        app.message = Some(("GridCraft".into(), crate::clean_error(&e)));
++                        app.message = Some(("Sheets".into(), crate::clean_error(&e)));
+                     }
+                 }
+             }
+diff --git a/crates/ui-egui/src/i18n/cs.rs b/crates/ui-egui/src/i18n/cs.rs
+index 1e8e1a7..d18f2d2 100644
+--- a/crates/ui-egui/src/i18n/cs.rs
++++ b/crates/ui-egui/src/i18n/cs.rs
+@@ -262,7 +262,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Options" => "Možnosti",
+         "Account" => "Účet",
+         "Product Information" => "Informace o produktu",
+-        "About GridCraft" => "O aplikaci GridCraft",
++        "About Sheets" => "O aplikaci Sheets",
+         "Version" => "Verze",
+         "Platform" => "Platforma",
+         "Licence" => "Licence",
+@@ -348,7 +348,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Paleta\npříkazů",
+         "Agent\nControl" => "Řízení\nagenty",
+         "Action\nJournal" => "Deník\nakcí",
+-        "About\nGridCraft" => "O aplikaci\nGridCraft",
++        "About\nSheets" => "O aplikaci\nSheets",
+         "Share" => "Sdílet",
+         "Add Chart\nElement" => "Přidat prvek\ngrafu",
+         "Change\nChart Type" => "Změnit\ntyp grafu",
+@@ -466,7 +466,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Hide Sheet" => "Skrýt list",
+         "Hierarchy & more" => "Hierarchické a další grafy",
+         "Highlighter" => "Zvýrazňovač",
+-        "How agents drive GridCraft (MCP / control channel)" => "Jak agenti ovládají GridCraft (MCP / řídicí kanál)",
++        "How agents drive Sheets (MCP / control channel)" => "Jak agenti ovládají Sheets (MCP / řídicí kanál)",
+         "Import a text or CSV file" => "Importovat textový soubor nebo CSV",
+         "Insert\nSlicer" => "Vložit\nprůřez",
+         "Insert Function (⇧F3)" => "Vložit funkci (⇧F3)",
+diff --git a/crates/ui-egui/src/i18n/de.rs b/crates/ui-egui/src/i18n/de.rs
+index 0a51167..4fa8228 100644
+--- a/crates/ui-egui/src/i18n/de.rs
++++ b/crates/ui-egui/src/i18n/de.rs
+@@ -264,7 +264,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Options" => "Optionen",
+         "Account" => "Konto",
+         "Product Information" => "Produktinformationen",
+-        "About GridCraft" => "Info zu GridCraft",
++        "About Sheets" => "Info zu Sheets",
+         "Version" => "Version",
+         "Platform" => "Plattform",
+         "Licence" => "Lizenz",
+@@ -351,7 +351,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Befehls-\npalette",
+         "Agent\nControl" => "Agenten-\nsteuerung",
+         "Action\nJournal" => "Aktions-\nprotokoll",
+-        "About\nGridCraft" => "Über\nGridCraft",
++        "About\nSheets" => "Über\nSheets",
+         "Share" => "Teilen",
+         "Add Chart\nElement" => "Diagrammelement\nhinzufügen",
+         "Change\nChart Type" => "Diagrammtyp\nändern",
+diff --git a/crates/ui-egui/src/i18n/el.rs b/crates/ui-egui/src/i18n/el.rs
+index ae8320c..a192f36 100644
+--- a/crates/ui-egui/src/i18n/el.rs
++++ b/crates/ui-egui/src/i18n/el.rs
+@@ -323,7 +323,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Παλέτα\nεντολών",
+         "Agent\nControl" => "Έλεγχος\nπρακτόρων",
+         "Action\nJournal" => "Ιστορικό\nενεργειών",
+-        "About\nGridCraft" => "Πληροφορίες για\nτο GridCraft",
++        "About\nSheets" => "Πληροφορίες για\nτο Sheets",
+         "Share" => "Κοινή χρήση",
+         "Add Chart\nElement" => "Προσθήκη στοιχείου\nγραφήματος",
+         "Change\nChart Type" => "Αλλαγή τύπου\nγραφήματος",
+@@ -471,7 +471,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Hide Sheet" => "Απόκρυψη φύλλου",
+         "Hierarchy & more" => "Ιεραρχία και άλλα",
+         "Highlighter" => "Εργαλείο επισήμανσης",
+-        "How agents drive GridCraft (MCP / control channel)" => "Πώς οι πράκτορες χειρίζονται το GridCraft (MCP / κανάλι ελέγχου)",
++        "How agents drive Sheets (MCP / control channel)" => "Πώς οι πράκτορες χειρίζονται το Sheets (MCP / κανάλι ελέγχου)",
+         "Import a text or CSV file" => "Εισαγωγή αρχείου κειμένου ή CSV",
+         "Insert\nSlicer" => "Εισαγωγή\nαναλυτή",
+         "Insert Function (⇧F3)" => "Εισαγωγή συνάρτησης (⇧F3)",
+@@ -583,7 +583,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Conditional Formatting Rules Manager" => "Διαχείριση κανόνων μορφοποίησης υπό όρους",
+         "Search Commands" => "Αναζήτηση εντολών",
+         "Agent Control" => "Έλεγχος πρακτόρων",
+-        "About GridCraft" => "Πληροφορίες για το GridCraft",
++        "About Sheets" => "Πληροφορίες για το Sheets",
+         "Insert Chart" => "Εισαγωγή γραφήματος",
+         "Select Data Source" => "Επιλογή προέλευσης δεδομένων",
+         "Action Journal" => "Ιστορικό ενεργειών",
+diff --git a/crates/ui-egui/src/i18n/es.rs b/crates/ui-egui/src/i18n/es.rs
+index 79352bb..12c4596 100644
+--- a/crates/ui-egui/src/i18n/es.rs
++++ b/crates/ui-egui/src/i18n/es.rs
+@@ -263,7 +263,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Options" => "Opciones",
+         "Account" => "Cuenta",
+         "Product Information" => "Información del producto",
+-        "About GridCraft" => "Acerca de GridCraft",
++        "About Sheets" => "Acerca de Sheets",
+         "Version" => "Versión",
+         "Platform" => "Plataforma",
+         "Licence" => "Licencia",
+@@ -348,7 +348,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Paleta de\ncomandos",
+         "Agent\nControl" => "Control\ndel agente",
+         "Action\nJournal" => "Registro\nde acciones",
+-        "About\nGridCraft" => "Acerca de\nGridCraft",
++        "About\nSheets" => "Acerca de\nSheets",
+         "Share" => "Compartir",
+         "Add Chart\nElement" => "Agregar elemento\nde gráfico",
+         "Change\nChart Type" => "Cambiar tipo\nde gráfico",
+diff --git a/crates/ui-egui/src/i18n/fr.rs b/crates/ui-egui/src/i18n/fr.rs
+index d422fb9..2337ce1 100644
+--- a/crates/ui-egui/src/i18n/fr.rs
++++ b/crates/ui-egui/src/i18n/fr.rs
+@@ -242,7 +242,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Palette de\ncommandes",
+         "Agent\nControl" => "Contrôle de\nl'agent",
+         "Action\nJournal" => "Journal des\nactions",
+-        "About\nGridCraft" => "À propos de\nGridCraft",
++        "About\nSheets" => "À propos de\nSheets",
+         "Share" => "Partager",
+         "Add Chart\nElement" => "Ajouter un élément\nde graphique",
+         "Change\nChart Type" => "Modifier le type\nde graphique",
+@@ -348,7 +348,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Options" => "Options",
+         "Account" => "Compte",
+         "Product Information" => "Informations sur le produit",
+-        "About GridCraft" => "À propos de GridCraft",
++        "About Sheets" => "À propos de Sheets",
+         "Version" => "Version",
+         "Platform" => "Plateforme",
+         "Licence" => "Licence",
+diff --git a/crates/ui-egui/src/i18n/it.rs b/crates/ui-egui/src/i18n/it.rs
+index c881ef1..8c4fd5b 100644
+--- a/crates/ui-egui/src/i18n/it.rs
++++ b/crates/ui-egui/src/i18n/it.rs
+@@ -224,7 +224,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Riquadro\ncomandi",
+         "Agent\nControl" => "Controllo\nagenti",
+         "Action\nJournal" => "Registro\nazioni",
+-        "About\nGridCraft" => "Informazioni su\nGridCraft",
++        "About\nSheets" => "Informazioni su\nSheets",
+         "Share" => "Condividi",
+         "Add Chart\nElement" => "Aggiungi\nelemento grafico",
+         "Change\nChart Type" => "Cambia tipo\ndi grafico",
+@@ -460,7 +460,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Conditional Formatting Rules Manager" => "Gestione regole di formattazione condizionale",
+         "Search Commands" => "Cerca comandi",
+         "Agent Control" => "Controllo agenti",
+-        "About GridCraft" => "Informazioni su GridCraft",
++        "About Sheets" => "Informazioni su Sheets",
+         "Insert Chart" => "Inserisci grafico",
+         "Select Data Source" => "Seleziona origine dati",
+         "Action Journal" => "Registro azioni",
+@@ -884,7 +884,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Hide Sheet" => "Nascondi foglio",
+         "Hierarchy & more" => "Gerarchia e altro",
+         "Highlighter" => "Evidenziatore",
+-        "How agents drive GridCraft (MCP / control channel)" => "Come gli agenti controllano GridCraft (MCP / canale di controllo)",
++        "How agents drive Sheets (MCP / control channel)" => "Come gli agenti controllano Sheets (MCP / canale di controllo)",
+         "Import a text or CSV file" => "Importa un file di testo o CSV",
+         "Insert Function" => "Inserisci funzione",
+         "Insert Function (⇧F3)" => "Inserisci funzione (⇧F3)",
+diff --git a/crates/ui-egui/src/i18n/ja.rs b/crates/ui-egui/src/i18n/ja.rs
+index 84b3866..3339ee2 100644
+--- a/crates/ui-egui/src/i18n/ja.rs
++++ b/crates/ui-egui/src/i18n/ja.rs
+@@ -238,7 +238,7 @@ pub(super) const CORE: &[(&str, &str)] = &[
+     ("Command\nPalette", "コマンド パレット"),
+     ("Agent\nControl", "エージェント制御"),
+     ("Action\nJournal", "操作ジャーナル"),
+-    ("About\nGridCraft", "GridCraft について"),
++    ("About\nSheets", "Sheets について"),
+     ("Share", "共有"),
+     ("Add Chart\nElement", "グラフ要素を追加"),
+     ("Change\nChart Type", "グラフの種類の変更"),
+@@ -470,7 +470,7 @@ pub(super) const DIALOGS: &[(&str, &str)] = &[
+     ("Conditional Formatting Rules Manager", "条件付き書式ルールの管理"),
+     ("Search Commands", "コマンドの検索"),
+     ("Agent Control", "エージェント制御"),
+-    ("About GridCraft", "GridCraft について"),
++    ("About Sheets", "Sheets について"),
+     ("Insert Chart", "グラフの挿入"),
+     ("Select Data Source", "データ ソースの選択"),
+     ("Action Journal", "操作ジャーナル"),
+@@ -893,7 +893,7 @@ pub(super) const DIALOGS: &[(&str, &str)] = &[
+     ("Hide Sheet", "シートの非表示"),
+     ("Hierarchy & more", "階層とその他"),
+     ("Highlighter", "蛍光ペン"),
+-    ("How agents drive GridCraft (MCP / control channel)", "エージェントによる GridCraft の操作 (MCP / 制御チャネル)"),
++    ("How agents drive Sheets (MCP / control channel)", "エージェントによる Sheets の操作 (MCP / 制御チャネル)"),
+     ("Import a text or CSV file", "テキストまたは CSV ファイルのインポート"),
+     ("Insert Function", "関数の挿入"),
+     ("Insert Function (⇧F3)", "関数の挿入 (⇧F3)"),
+diff --git a/crates/ui-egui/src/i18n/ko.rs b/crates/ui-egui/src/i18n/ko.rs
+index d9611ed..5cee92f 100644
+--- a/crates/ui-egui/src/i18n/ko.rs
++++ b/crates/ui-egui/src/i18n/ko.rs
+@@ -229,7 +229,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "명령\n팔레트",
+         "Agent\nControl" => "에이전트\n제어",
+         "Action\nJournal" => "작업\n기록",
+-        "About\nGridCraft" => "GridCraft\n정보",
++        "About\nSheets" => "Sheets\n정보",
+         "Share" => "공유",
+         "Add Chart\nElement" => "차트\n요소 추가",
+         "Change\nChart Type" => "차트 종류\n변경",
+@@ -350,7 +350,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Options" => "옵션",
+         "Account" => "계정",
+         "Product Information" => "제품 정보",
+-        "About GridCraft" => "GridCraft 정보",
++        "About Sheets" => "Sheets 정보",
+         "Version" => "버전",
+         "Platform" => "플랫폼",
+         "Licence" => "라이선스",
+diff --git a/crates/ui-egui/src/i18n/nl.rs b/crates/ui-egui/src/i18n/nl.rs
+index 13c7178..0ab8893 100644
+--- a/crates/ui-egui/src/i18n/nl.rs
++++ b/crates/ui-egui/src/i18n/nl.rs
+@@ -233,7 +233,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Opdracht-\npalet",
+         "Agent\nControl" => "Agent-\nbesturing",
+         "Action\nJournal" => "Actie-\nlogboek",
+-        "About\nGridCraft" => "Over\nGridCraft",
++        "About\nSheets" => "Over\nSheets",
+         "Share" => "Delen",
+         "Add Chart\nElement" => "Grafiekelement\ntoevoegen",
+         "Change\nChart Type" => "Ander\ngrafiektype",
+@@ -452,7 +452,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Hide Sheet" => "Blad verbergen",
+         "Hierarchy & more" => "Hiërarchie en meer",
+         "Highlighter" => "Markeerstift",
+-        "How agents drive GridCraft (MCP / control channel)" => "Hoe agents GridCraft besturen (MCP / besturingskanaal)",
++        "How agents drive Sheets (MCP / control channel)" => "Hoe agents Sheets besturen (MCP / besturingskanaal)",
+         "Import a text or CSV file" => "Een tekst- of CSV-bestand importeren",
+         "Insert\nSlicer" => "Gegevensfilter\ninvoegen",
+         "Insert Function (⇧F3)" => "Functie invoegen (⇧F3)",
+diff --git a/crates/ui-egui/src/i18n/pl.rs b/crates/ui-egui/src/i18n/pl.rs
+index c632068..375d7dd 100644
+--- a/crates/ui-egui/src/i18n/pl.rs
++++ b/crates/ui-egui/src/i18n/pl.rs
+@@ -220,7 +220,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Paleta\npoleceń",
+         "Agent\nControl" => "Sterowanie\nagentem",
+         "Action\nJournal" => "Dziennik\nakcji",
+-        "About\nGridCraft" => "O programie\nGridCraft",
++        "About\nSheets" => "O programie\nSheets",
+         "Share" => "Udostępnij",
+         "Add Chart\nElement" => "Dodaj element\nwykresu",
+         "Change\nChart Type" => "Zmień\ntyp wykresu",
+@@ -454,7 +454,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Conditional Formatting Rules Manager" => "Menedżer reguł formatowania warunkowego",
+         "Search Commands" => "Wyszukaj polecenia",
+         "Agent Control" => "Sterowanie agentem",
+-        "About GridCraft" => "O programie GridCraft",
++        "About Sheets" => "O programie Sheets",
+         "Insert Chart" => "Wstawianie wykresu",
+         "Select Data Source" => "Wybieranie źródła danych",
+         "Action Journal" => "Dziennik akcji",
+@@ -878,7 +878,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Hide Sheet" => "Ukryj arkusz",
+         "Hierarchy & more" => "Hierarchiczne i inne",
+         "Highlighter" => "Zakreślacz",
+-        "How agents drive GridCraft (MCP / control channel)" => "Jak agenci sterują programem GridCraft (MCP / kanał sterowania)",
++        "How agents drive Sheets (MCP / control channel)" => "Jak agenci sterują programem Sheets (MCP / kanał sterowania)",
+         "Import a text or CSV file" => "Importuj plik tekstowy lub CSV",
+         "Insert Function" => "Wstaw funkcję",
+         "Insert Function (⇧F3)" => "Wstaw funkcję (⇧F3)",
+diff --git a/crates/ui-egui/src/i18n/pt.rs b/crates/ui-egui/src/i18n/pt.rs
+index 3d26f2a..380b957 100644
+--- a/crates/ui-egui/src/i18n/pt.rs
++++ b/crates/ui-egui/src/i18n/pt.rs
+@@ -225,7 +225,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Paleta de\nComandos",
+         "Agent\nControl" => "Controle\ndo Agente",
+         "Action\nJournal" => "Registro\nde Ações",
+-        "About\nGridCraft" => "Sobre o\nGridCraft",
++        "About\nSheets" => "Sobre o\nSheets",
+         "Share" => "Compartilhar",
+         "Add Chart\nElement" => "Adicionar\nElemento de Gráfico",
+         "Change\nChart Type" => "Alterar\nTipo de Gráfico",
+@@ -471,7 +471,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Conditional Formatting Rules Manager" => "Gerenciador de Regras de Formatação Condicional",
+         "Search Commands" => "Pesquisar Comandos",
+         "Agent Control" => "Controle por Agentes",
+-        "About GridCraft" => "Sobre o GridCraft",
++        "About Sheets" => "Sobre o Sheets",
+         "Insert Chart" => "Inserir Gráfico",
+         "Select Data Source" => "Selecionar Fonte de Dados",
+         "Action Journal" => "Registro de Ações",
+@@ -895,7 +895,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Hide Sheet" => "Ocultar Planilha",
+         "Hierarchy & more" => "Hierarquia e mais",
+         "Highlighter" => "Marca-texto",
+-        "How agents drive GridCraft (MCP / control channel)" => "Como os agentes controlam o GridCraft (MCP / canal de controle)",
++        "How agents drive Sheets (MCP / control channel)" => "Como os agentes controlam o Sheets (MCP / canal de controle)",
+         "Import a text or CSV file" => "Importar um arquivo de texto ou CSV",
+         "Insert Function" => "Inserir Função",
+         "Insert Function (⇧F3)" => "Inserir Função (⇧F3)",
+diff --git a/crates/ui-egui/src/i18n/ro.rs b/crates/ui-egui/src/i18n/ro.rs
+index f9e732c..fd63d7a 100644
+--- a/crates/ui-egui/src/i18n/ro.rs
++++ b/crates/ui-egui/src/i18n/ro.rs
+@@ -227,7 +227,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Paleta de\ncomenzi",
+         "Agent\nControl" => "Control prin\nagenți",
+         "Action\nJournal" => "Jurnal de\nacțiuni",
+-        "About\nGridCraft" => "Despre\nGridCraft",
++        "About\nSheets" => "Despre\nSheets",
+         "Share" => "Partajare",
+         "Add Chart\nElement" => "Adăugare element\nde diagramă",
+         "Change\nChart Type" => "Schimbare\ntip diagramă",
+@@ -460,7 +460,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Conditional Formatting Rules Manager" => "Manager de reguli de formatare condiționată",
+         "Search Commands" => "Căutare comenzi",
+         "Agent Control" => "Control prin agenți",
+-        "About GridCraft" => "Despre GridCraft",
++        "About Sheets" => "Despre Sheets",
+         "Insert Chart" => "Inserare diagramă",
+         "Select Data Source" => "Selectare sursă de date",
+         "Action Journal" => "Jurnal de acțiuni",
+@@ -884,7 +884,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Hide Sheet" => "Ascundere foaie",
+         "Hierarchy & more" => "Ierarhie și altele",
+         "Highlighter" => "Marker",
+-        "How agents drive GridCraft (MCP / control channel)" => "Cum controlează agenții GridCraft (MCP / canal de control)",
++        "How agents drive Sheets (MCP / control channel)" => "Cum controlează agenții Sheets (MCP / canal de control)",
+         "Import a text or CSV file" => "Importă un fișier text sau CSV",
+         "Insert Function" => "Inserare funcție",
+         "Insert Function (⇧F3)" => "Inserare funcție (⇧F3)",
+diff --git a/crates/ui-egui/src/i18n/ru.rs b/crates/ui-egui/src/i18n/ru.rs
+index 184f534..688c643 100644
+--- a/crates/ui-egui/src/i18n/ru.rs
++++ b/crates/ui-egui/src/i18n/ru.rs
+@@ -229,7 +229,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Палитра\nкоманд",
+         "Agent\nControl" => "Управление\nагентом",
+         "Action\nJournal" => "Журнал\nдействий",
+-        "About\nGridCraft" => "О\nGridCraft",
++        "About\nSheets" => "О\nSheets",
+         "Share" => "Поделиться",
+         "Add Chart\nElement" => "Добавить элемент\nдиаграммы",
+         "Change\nChart Type" => "Изменить тип\nдиаграммы",
+@@ -350,7 +350,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Options" => "Параметры",
+         "Account" => "Учетная запись",
+         "Product Information" => "Сведения о продукте",
+-        "About GridCraft" => "О программе GridCraft",
++        "About Sheets" => "О программе Sheets",
+         "Version" => "Версия",
+         "Platform" => "Платформа",
+         "Licence" => "Лицензия",
+diff --git a/crates/ui-egui/src/i18n/sr.rs b/crates/ui-egui/src/i18n/sr.rs
+index 31f62a5..30c4e7c 100644
+--- a/crates/ui-egui/src/i18n/sr.rs
++++ b/crates/ui-egui/src/i18n/sr.rs
+@@ -232,7 +232,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Paleta\nkomandi",
+         "Agent\nControl" => "Kontrola\nagenta",
+         "Action\nJournal" => "Dnevnik\nradnji",
+-        "About\nGridCraft" => "O programu\nGridCraft",
++        "About\nSheets" => "O programu\nSheets",
+         "Share" => "Deli",
+         "Add Chart\nElement" => "Dodaj element\ngrafikona",
+         "Change\nChart Type" => "Promeni\ntip grafikona",
+@@ -342,7 +342,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Options" => "Opcije",
+         "Account" => "Nalog",
+         "Product Information" => "Informacije o proizvodu",
+-        "About GridCraft" => "O programu GridCraft",
++        "About Sheets" => "O programu Sheets",
+         "Version" => "Verzija",
+         "Platform" => "Platforma",
+         "Licence" => "Licenca",
+diff --git a/crates/ui-egui/src/i18n/tr.rs b/crates/ui-egui/src/i18n/tr.rs
+index 042ccdb..4051885 100644
+--- a/crates/ui-egui/src/i18n/tr.rs
++++ b/crates/ui-egui/src/i18n/tr.rs
+@@ -337,7 +337,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Komut\nPaleti",
+         "Agent\nControl" => "Ajan\nKontrolü",
+         "Action\nJournal" => "İşlem\nGünlüğü",
+-        "About\nGridCraft" => "GridCraft\nHakkında",
++        "About\nSheets" => "Sheets\nHakkında",
+         "Share" => "Paylaş",
+         "Add Chart\nElement" => "Grafik Öğesi\nEkle",
+         "Change\nChart Type" => "Grafik Türünü\nDeğiştir",
+diff --git a/crates/ui-egui/src/i18n/uk.rs b/crates/ui-egui/src/i18n/uk.rs
+index 4667953..6378cb4 100644
+--- a/crates/ui-egui/src/i18n/uk.rs
++++ b/crates/ui-egui/src/i18n/uk.rs
+@@ -222,7 +222,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Палітра\nкоманд",
+         "Agent\nControl" => "Керування\nагентом",
+         "Action\nJournal" => "Журнал\nдій",
+-        "About\nGridCraft" => "Про\nGridCraft",
++        "About\nSheets" => "Про\nSheets",
+         "Share" => "Поділитися",
+         "Add Chart\nElement" => "Додати елемент\nдіаграми",
+         "Change\nChart Type" => "Змінити тип\nдіаграми",
+@@ -458,7 +458,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Conditional Formatting Rules Manager" => "Conditional Formatting Rules Manager",
+         "Search Commands" => "Search Commands",
+         "Agent Control" => "Agent Control",
+-        "About GridCraft" => "About GridCraft",
++        "About Sheets" => "About Sheets",
+         "Insert Chart" => "Insert Chart",
+         "Select Data Source" => "Select Data Source",
+         "Action Journal" => "Action Journal",
+@@ -881,7 +881,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Hide Sheet" => "Hide Sheet",
+         "Hierarchy & more" => "Hierarchy & more",
+         "Highlighter" => "Highlighter",
+-        "How agents drive GridCraft (MCP / control channel)" => "How agents drive GridCraft (MCP / control channel)",
++        "How agents drive Sheets (MCP / control channel)" => "How agents drive Sheets (MCP / control channel)",
+         "Import a text or CSV file" => "Import a text or CSV file",
+         "Insert Function" => "Insert Function",
+         "Insert Function (⇧F3)" => "Insert Function (⇧F3)",
+diff --git a/crates/ui-egui/src/i18n/vi.rs b/crates/ui-egui/src/i18n/vi.rs
+index 920e757..ba915dd 100644
+--- a/crates/ui-egui/src/i18n/vi.rs
++++ b/crates/ui-egui/src/i18n/vi.rs
+@@ -236,7 +236,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "Bảng\nlệnh",
+         "Agent\nControl" => "Điều khiển\nagent",
+         "Action\nJournal" => "Nhật ký\nthao tác",
+-        "About\nGridCraft" => "Giới thiệu\nGridCraft",
++        "About\nSheets" => "Giới thiệu\nSheets",
+         "Share" => "Chia sẻ",
+         "Add Chart\nElement" => "Thêm thành phần\nbiểu đồ",
+         "Change\nChart Type" => "Đổi kiểu\nbiểu đồ",
+diff --git a/crates/ui-egui/src/i18n/zh.rs b/crates/ui-egui/src/i18n/zh.rs
+index 8ead92a..6d7e809 100644
+--- a/crates/ui-egui/src/i18n/zh.rs
++++ b/crates/ui-egui/src/i18n/zh.rs
+@@ -229,7 +229,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Command\nPalette" => "命令\n面板",
+         "Agent\nControl" => "智能体\n控制",
+         "Action\nJournal" => "操作\n日志",
+-        "About\nGridCraft" => "关于\nGridCraft",
++        "About\nSheets" => "关于\nSheets",
+         "Share" => "分享",
+         "Add Chart\nElement" => "添加图表\n元素",
+         "Change\nChart Type" => "更改\n图表类型",
+@@ -348,7 +348,7 @@ pub(super) fn translate(text: &str) -> Option<&'static str> {
+         "Options" => "选项",
+         "Account" => "账户",
+         "Product Information" => "产品信息",
+-        "About GridCraft" => "关于 GridCraft",
++        "About Sheets" => "关于 Sheets",
+         "Version" => "版本",
+         "Platform" => "平台",
+         "Licence" => "许可证",
+diff --git a/crates/ui-egui/src/lib.rs b/crates/ui-egui/src/lib.rs
+index 9bea918..a895b4b 100644
+--- a/crates/ui-egui/src/lib.rs
++++ b/crates/ui-egui/src/lib.rs
+@@ -588,7 +588,7 @@ impl SheetApp {
+         if e.contains("is not available right now") {
+             self.toast = Some((e, now_ms()));
+         } else {
+-            self.message = Some(("GridCraft".into(), clean_error(&e)));
++            self.message = Some(("Sheets".into(), clean_error(&e)));
+         }
+     }
+ 
+@@ -743,7 +743,7 @@ impl SheetApp {
+         for req in self.session.take_ui_requests() {
+             match req {
+                 UiRequest::Dialog(name, params) => self.open_dialog(&name, params),
+-                UiRequest::Message(m) => self.message = Some(("GridCraft".into(), m)),
++                UiRequest::Message(m) => self.message = Some(("Sheets".into(), m)),
+                 UiRequest::EditCell(text) => {
+                     let text = text.map(|text| {
+                         self.session
+@@ -844,7 +844,7 @@ impl SheetApp {
+             Ok(r) => self.after_open(Some(path), &r),
+             // A password-protected workbook: ask for the password; the dialog opens it.
+             Err(e) if e.contains(gridcraft_engine::io::PASSWORD_REQUIRED) => self.open_dialog("openPassword", json!({"path": path})),
+-            Err(e) => self.message = Some(("GridCraft".into(), clean_error(&e))),
++            Err(e) => self.message = Some(("Sheets".into(), clean_error(&e))),
+         }
+         self.after_engine();
+     }
+@@ -883,7 +883,7 @@ impl SheetApp {
+             let text = if dropped {
+                 "This workbook's VBA macros could not be loaded and were dropped, so they will not be in the saved file. Keep the original file."
+             } else {
+-                "This workbook contains VBA macros. GridCraft keeps them when you save as .xlsm, but does not run them."
++                "This workbook contains VBA macros. Sheets keeps them when you save as .xlsm, but does not run them."
+             };
+             self.notice = Some(Notice { text: text.into(), kind: NoticeKind::Warning, action: Some(("What this means".into(), "macros".into())) });
+         } else {
+@@ -995,7 +995,7 @@ impl SheetApp {
+         let text = match self.session.active().map(|d| formula_locale::canonical(&text, ed.locale, &d.wb, ed.sheet, ed.cell)) {
+             Some(Ok(text)) => text,
+             Some(Err(error)) => {
+-                self.message = Some(("GridCraft".into(), error.to_string()));
++                self.message = Some(("Sheets".into(), error.to_string()));
+                 self.editor = Some(ed);
+                 self.session.mode = gridcraft_engine::Mode::Edit;
+                 return false;
+@@ -1007,7 +1007,7 @@ impl SheetApp {
+             && let Some((dv, msg)) = gridcraft_engine::cmd::data::check_validation(&d.wb, ed.sheet, ed.cell, &text)
+         {
+             if dv.error_style == gridcraft_engine::model::ErrorStyle::Stop {
+-                let title = if dv.error_title.is_empty() { "GridCraft".to_string() } else { dv.error_title.clone() };
++                let title = if dv.error_title.is_empty() { "Sheets".to_string() } else { dv.error_title.clone() };
+                 self.message = Some((title, msg));
+                 self.editor = Some(ed);
+                 self.session.mode = gridcraft_engine::Mode::Edit;
+@@ -1019,7 +1019,7 @@ impl SheetApp {
+         if self.session.active().is_some_and(|d| d.wb.active_sheet != ed.sheet)
+             && let Err(e) = self.session.run("sheet.activate", json!({"sheet": ed.sheet}))
+         {
+-            self.message = Some(("GridCraft".into(), clean_error(&e)));
++            self.message = Some(("Sheets".into(), clean_error(&e)));
+             self.editor = Some(ed);
+             self.session.mode = gridcraft_engine::Mode::Edit;
+             return false;
+@@ -1050,7 +1050,7 @@ impl SheetApp {
+                 true
+             }
+             Err(e) => {
+-                self.message = Some(("GridCraft".into(), clean_error(&e)));
++                self.message = Some(("Sheets".into(), clean_error(&e)));
+                 self.editor = Some(ed);
+                 self.session.mode = gridcraft_engine::Mode::Edit;
+                 false
+@@ -1259,7 +1259,7 @@ impl SheetApp {
+                     self.backstage = None;
+                     self.open_dialog("openPassword", json!({"name": name, "base64": b64}));
+                 }
+-                Err(e) => self.message = Some(("GridCraft".into(), clean_error(&e))),
++                Err(e) => self.message = Some(("Sheets".into(), clean_error(&e))),
+             }
+             self.after_engine();
+         }
+diff --git a/crates/ui-egui/src/ribbon.rs b/crates/ui-egui/src/ribbon.rs
+index ee64fed..29344f1 100644
+--- a/crates/ui-egui/src/ribbon.rs
++++ b/crates/ui-egui/src/ribbon.rs
+@@ -2573,7 +2573,7 @@ fn automate(app: &mut SheetApp, ui: &mut Ui) {
+     if __k.clicked() {
+         app.open_dialog("commandSearch", json!({}));
+     }
+-    let __k = big_button(ui, Icon::Script, "Agent\nControl", "How agents drive GridCraft (MCP / control channel)", false);
++    let __k = big_button(ui, Icon::Script, "Agent\nControl", "How agents drive Sheets (MCP / control channel)", false);
+     control_keytip(app, ui, &__k, "agents");
+     if __k.clicked() {
+         app.open_dialog("agents", json!({}));
+@@ -2583,7 +2583,7 @@ fn automate(app: &mut SheetApp, ui: &mut Ui) {
+     if __k.clicked() {
+         app.open_dialog("journal", json!({}));
+     }
+-    let __k = big_button(ui, Icon::Script, "About\nGridCraft", "Version, contributors and the AI models that helped", false);
++    let __k = big_button(ui, Icon::Script, "About\nSheets", "Version, contributors and the AI models that helped", false);
+     control_keytip(app, ui, &__k, "about");
+     if __k.clicked() {
+         app.open_dialog("about", json!({}));
+diff --git a/crates/ui-egui/src/theme.rs b/crates/ui-egui/src/theme.rs
+index 74c13c9..9df54d5 100644
+--- a/crates/ui-egui/src/theme.rs
++++ b/crates/ui-egui/src/theme.rs
+@@ -188,18 +188,18 @@ impl Tokens {
+     pub fn dark() -> Tokens {
+         Tokens {
+             dark: true,
+-            window: Color32::from_rgb(0x29, 0x29, 0x29),
+-            ribbon: Color32::from_rgb(0x33, 0x33, 0x33),
+-            ribbon_border: Color32::from_rgb(0x40, 0x40, 0x40),
+-            text: Color32::from_rgb(0xEE, 0xEE, 0xEE),
+-            text_dim: Color32::from_rgb(0xB0, 0xB0, 0xB0),
++            window: Color32::from_rgb(0x12, 0x16, 0x1B),
++            ribbon: Color32::from_rgb(0x12, 0x16, 0x1B),
++            ribbon_border: Color32::from_rgb(0x34, 0x3B, 0x43),
++            text: Color32::from_rgb(0xE6, 0xE9, 0xED),
++            text_dim: Color32::from_rgb(0xAA, 0xB2, 0xBC),
+             text_disabled: Color32::from_rgb(0x70, 0x70, 0x70),
+-            accent: Color32::from_rgb(0x5C, 0xC5, 0x87),
++            accent: Color32::from_rgb(0x70, 0xB3, 0x95),
+             accent_dark: Color32::from_rgb(0x3F, 0xA8, 0x6C),
+             accent_soft: Color32::from_rgb(0x23, 0x45, 0x31),
+-            hover: Color32::from_rgb(0x42, 0x42, 0x42),
+-            pressed: Color32::from_rgb(0x4D, 0x4D, 0x4D),
+-            separator: Color32::from_rgb(0x48, 0x48, 0x48),
++            hover: Color32::from_rgb(0x24, 0x2C, 0x35),
++            pressed: Color32::from_rgb(0x30, 0x3B, 0x46),
++            separator: Color32::from_rgb(0x34, 0x3B, 0x43),
+             grid_bg: Color32::WHITE,
+             desk: Color32::from_rgb(0x3A, 0x3A, 0x3A),
+             gridline: Color32::from_rgb(0xE1, 0xE1, 0xE1),
+@@ -211,13 +211,13 @@ impl Tokens {
+             header_all_bg: Color32::from_rgb(0x2E, 0x55, 0x3E),
+             sel_fill: Color32::from_rgba_unmultiplied(0x10, 0x7C, 0x41, 0x24),
+             sel_border: Color32::from_rgb(0x10, 0x7C, 0x41),
+-            input_bg: Color32::from_rgb(0x1F, 0x1F, 0x1F),
++            input_bg: Color32::from_rgb(0x0B, 0x0D, 0x10),
+             input_border: Color32::from_rgb(0x50, 0x50, 0x50),
+-            tab_bar: Color32::from_rgb(0x29, 0x29, 0x29),
++            tab_bar: Color32::from_rgb(0x0B, 0x0D, 0x10),
+             tab_active: Color32::from_rgb(0x3A, 0x3A, 0x3A),
+-            status_bar: Color32::from_rgb(0x29, 0x29, 0x29),
++            status_bar: Color32::from_rgb(0x0B, 0x0D, 0x10),
+             cell_text: Color32::BLACK,
+-            menu_bg: Color32::from_rgb(0x30, 0x30, 0x30),
++            menu_bg: Color32::from_rgb(0x12, 0x16, 0x1B),
+             shadow: Color32::from_black_alpha(90),
+             danger: Color32::from_rgb(0xFF, 0x95, 0x85),
+             error_check_green: Color32::from_rgb(0x4C, 0xC2, 0x6B),

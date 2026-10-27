@@ -1,0 +1,245 @@
+{
+  "schema": "greyward.office-component-export/v1",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "sha256": "d60f352d0db1404c70afb4bb8b2ca3fd1c610572aa40720e8a0b7baa7885418c"
+    },
+    {
+      "path": ".github/workflows/office-app.yml",
+      "sha256": "0c658df6ac6d43576c8c4e27f4f9eb6c24e8eae2365af9c123b3da89c3cf9f92"
+    },
+    {
+      "path": ".github/workflows/office.yml",
+      "sha256": "774d950ea9c45a12e451bf8a90a435ee2eb96ec5d95ac1bda4f812c59d2f9396"
+    },
+    {
+      "path": ".github/workflows/validation.yml",
+      "sha256": "c77c9d7dd00a093d2c21647032391dd31ef3ec7becc572139f037f18fc197a15"
+    },
+    {
+      "path": ".gitleaks.toml",
+      "sha256": "f30545421b39c8564bf4cf187b81119b1f4fdb2e177b2b77cf386b46a16ed5b8"
+    },
+    {
+      "path": "branding/source/greyward-pdf-document.svg",
+      "sha256": "f15b53a789886de48e4fe9857fb8e50d8478ca2873bf0fef3a65d286f45944bf"
+    },
+    {
+      "path": "branding/source/greyward-pdf.svg",
+      "sha256": "b563f79413565aacb182e444db31532b687547bc7d310ea27c3b2ba9e2669b19"
+    },
+    {
+      "path": "branding/source/greyward-sheets-document.svg",
+      "sha256": "1cadb11395d3461f855180e7004cb58a896e384ceb26413b2fac54af48d52794"
+    },
+    {
+      "path": "branding/source/greyward-sheets.svg",
+      "sha256": "38d024ddacea88f9b4a095a5516f3365a4844652829e08c43c49d1563970f053"
+    },
+    {
+      "path": "branding/source/greyward-slides-document.svg",
+      "sha256": "1d224eaf5e43524967d364701b3dcd348e9342cc1a85afed679af20a5745b33c"
+    },
+    {
+      "path": "branding/source/greyward-slides.svg",
+      "sha256": "3a065e665ec0fc53e97dd5beef4e059537d90532716353df162352e2ed9ef801"
+    },
+    {
+      "path": "branding/source/greyward-symbol.svg",
+      "sha256": "dd925d9f9ef3edc174f9b9fcbc0972a60d13a3d21c9d6864ac39727a028b6f22"
+    },
+    {
+      "path": "branding/source/greyward-wordmark.svg",
+      "sha256": "3cc9f65e9e677dab5a4deb0cc86368fe46ab61195be5069713247cb77b2441a2"
+    },
+    {
+      "path": "branding/source/greyward-writer-document.svg",
+      "sha256": "f9dbbb6d310485b72213b69c0411d0de5857e9c2132c432444e95d0515a1ad9d"
+    },
+    {
+      "path": "branding/source/greyward-writer.svg",
+      "sha256": "a9fd4a79f5a3dd2209cf143eeb63d6af050b0c053525cb966179a893ee777903"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809"
+    },
+    {
+      "path": "packaging/greyward-office/artwork.py",
+      "sha256": "3a27ac82f6901f66671d51559a4db75f2fb0814488cbfb6d49fb8162e2fded05"
+    },
+    {
+      "path": "packaging/greyward-office/automation/bootstrap.py",
+      "sha256": "5609f0b8ae17f5cfa9c2860716ad2fd9c42fe653e42b6d54251a54a228dfb10d"
+    },
+    {
+      "path": "packaging/greyward-office/automation/candidate.py",
+      "sha256": "eb33f65249e50777181fe60bc2cf699b2591e970e2dde946f243a9cf03cc4875"
+    },
+    {
+      "path": "packaging/greyward-office/automation/ci-build.sh",
+      "sha256": "752b0f032c0eade8817f5c444f8f4e5746e1d592d9448a800e6f9938ad8dbeae"
+    },
+    {
+      "path": "packaging/greyward-office/automation/Containerfile",
+      "sha256": "479f1c1007d9ac6b64544c357f339796d2d289db3e156a0ca8427114eede64b4"
+    },
+    {
+      "path": "packaging/greyward-office/automation/dnf-check.py",
+      "sha256": "a110480085e222f2ca1f082c4c03d5e6f90b79b7d87d7c52b565bf1aafce01b2"
+    },
+    {
+      "path": "packaging/greyward-office/automation/github.py",
+      "sha256": "05d59f4dfe9fdc59d5b4eeedf1553edef4205fc9f09420ba5e5cf119c4dccb78"
+    },
+    {
+      "path": "packaging/greyward-office/automation/gui-check.py",
+      "sha256": "cf830cfcfb18d21a6ab835f63ba917a71f5cbe20063c53e1484171cb2519d9fc"
+    },
+    {
+      "path": "packaging/greyward-office/automation/model.py",
+      "sha256": "b2c105d28621b6d76dc1016e56e6e8aeba280eb289f68d6e59a1edea93e9d0dc"
+    },
+    {
+      "path": "packaging/greyward-office/automation/office-app.yml",
+      "sha256": "0c658df6ac6d43576c8c4e27f4f9eb6c24e8eae2365af9c123b3da89c3cf9f92"
+    },
+    {
+      "path": "packaging/greyward-office/automation/policy.json",
+      "sha256": "f5f34cd9c8a37e22c229e389383492b778ab9eeab07cde6253dca5f4dc235cda"
+    },
+    {
+      "path": "packaging/greyward-office/automation/release.py",
+      "sha256": "a26974cdeafaf46b2b8030fbc9007cfbb8913ca5e58930bb959de48f8ca10ca9"
+    },
+    {
+      "path": "packaging/greyward-office/automation/seal.py",
+      "sha256": "5453c0661f2a481848a5bb690ffcc4c803f9ddf810786edc2c7c0bea9a5fead8"
+    },
+    {
+      "path": "packaging/greyward-office/automation/transfer.py",
+      "sha256": "9376c713f25c19ee76d54d72369d376c5d1f69c6f9534052bb9e1d28da4e685b"
+    },
+    {
+      "path": "packaging/greyward-office/automation/validation.yml",
+      "sha256": "c77c9d7dd00a093d2c21647032391dd31ef3ec7becc572139f037f18fc197a15"
+    },
+    {
+      "path": "packaging/greyward-office/automation/workflow.yml",
+      "sha256": "774d950ea9c45a12e451bf8a90a435ee2eb96ec5d95ac1bda4f812c59d2f9396"
+    },
+    {
+      "path": "packaging/greyward-office/build-all.py",
+      "sha256": "1549161714f3806d261ab2789815279ec7434c6f335b08e2d68d6ac80fb1061e"
+    },
+    {
+      "path": "packaging/greyward-office/build.py",
+      "sha256": "b54dc959f62361513be7cbe2122d6e609c74309c935a923ddaaa7a4b649caba5"
+    },
+    {
+      "path": "packaging/greyward-office/channel.json",
+      "sha256": "0ffe79d56ed08594baa6056959540e531656075958727ddb2f7e55b355855d3b"
+    },
+    {
+      "path": "packaging/greyward-office/check-updates.py",
+      "sha256": "62fbb2f201cab74320289de58c9a740458475e11a0e85b810a72d5e38a7bcab8"
+    },
+    {
+      "path": "packaging/greyward-office/greyward-office.repo.in",
+      "sha256": "6fd5c6673190a0cd890050d47fb142bb676b3cb2803bcdd83c6753860a54c276"
+    },
+    {
+      "path": "packaging/greyward-office/keys/RPM-GPG-KEY-greyward-office.gpg",
+      "sha256": "4e637c435f8c733d02656b796b42ccf80ebeb596b527b718fc02007053790997"
+    },
+    {
+      "path": "packaging/greyward-office/licenses/CC-BY-SA-4.0.txt",
+      "sha256": "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5"
+    },
+    {
+      "path": "packaging/greyward-office/licenses/README.md",
+      "sha256": "46abc92a420449b8fb06f67de7da187daaaf40acdf2a6ac085d5b79f0192d409"
+    },
+    {
+      "path": "packaging/greyward-office/migrate-associations.py",
+      "sha256": "813d93d26702ecc00d08eae9b06c2932db4bd872cb8ea0827157736d6cd86f0f"
+    },
+    {
+      "path": "packaging/greyward-office/office.spec.in",
+      "sha256": "635424ca8a0cb59a0e0161736171f6374a772a69cfabaf3d601783c52e9068e5"
+    },
+    {
+      "path": "packaging/greyward-office/patches/deckcraft.patch",
+      "sha256": "2230418bbd13e26eed5b0bf7d2362a9fb97c65844b53aad1a53d8aa9791d269a"
+    },
+    {
+      "path": "packaging/greyward-office/patches/gridcraft.patch",
+      "sha256": "05c7f87e087733faed08e0d5e3019ebd613664af667ebf159d814a1355522790"
+    },
+    {
+      "path": "packaging/greyward-office/patches/pdfcraft.patch",
+      "sha256": "ef18bf39977f28194797cc35000dd6cd6aacf045493f3507574b1c5c7759f932"
+    },
+    {
+      "path": "packaging/greyward-office/patches/wordcraft.patch",
+      "sha256": "30b9ee121f1cec49d6df4782e7d1501bf5a5b553cd34ecc837bd4619af552556"
+    },
+    {
+      "path": "packaging/greyward-office/prepare-update.py",
+      "sha256": "b88cf1297433af895de2a58b6a992dd77f9c29ef31b0575e2811ec5d42c945fb"
+    },
+    {
+      "path": "packaging/greyward-office/prepare.py",
+      "sha256": "a1e1cc8c685a4f70a381e73e1c0c3eb15c9615e2e1a289d8153489ac6c336439"
+    },
+    {
+      "path": "packaging/greyward-office/render-icons.py",
+      "sha256": "c9d80f131e14393a67a34e9c16b089b7e28a87658c8b27b4a465da30d190a7b7"
+    },
+    {
+      "path": "packaging/greyward-office/repository.py",
+      "sha256": "dccdb1b8a92b4f03467b6bc568feb9799da52330a3d78ce2cf4183c3367db4a3"
+    },
+    {
+      "path": "packaging/greyward-office/source.json",
+      "sha256": "19bb08c6ad896690dd195faabd311fdeabefb260bde095ba2f196b3531c18924"
+    },
+    {
+      "path": "packaging/greyward-office/stage-channel.py",
+      "sha256": "38114a416e9a304d08d5b6f2392a577cc34e0fd40816b63f7deb6f67cefbc567"
+    },
+    {
+      "path": "packaging/greyward-office/upstream.py",
+      "sha256": "8f5cc246515ecc7ec5622cc09dce9644496d02f3aaa2e7d2cde203f85c2de3d7"
+    },
+    {
+      "path": "packaging/greyward-office/verify-inputs.py",
+      "sha256": "130836be977dfbf9b7d819aa2692a3ad2322d1c944b385c723bb15ef68595c75"
+    },
+    {
+      "path": "README.md",
+      "sha256": "73200d56ef5ad839da74571052c4b88d5b91136ad86926b27ffe2cca2f2bc3dc"
+    },
+    {
+      "path": "state/office.json",
+      "sha256": "a6860bf0d7d57ac54bafa39b6fa47501f9d316c743f242feed0fdf85d6b07666"
+    },
+    {
+      "path": "tests/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tests/fixtures/office-roundtrip.py",
+      "sha256": "67c204889b3c4f565acaef0bd4a8980303613fe5f7b1a6694f2e0688311dc15c"
+    },
+    {
+      "path": "tests/test_office_automation.py",
+      "sha256": "08dff7dbfe63dfe8a4995d6d0889a2040af719bd3f775c1dc4554da5f5ae1491"
+    },
+    {
+      "path": "tests/test_office_upstream.py",
+      "sha256": "ebfe54f4dd786ae8e76f54f83c9d68d469659355b3549f4216ef563bf57b1f5e"
+    }
+  ]
+}

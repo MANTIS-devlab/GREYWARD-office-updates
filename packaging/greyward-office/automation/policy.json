@@ -1,0 +1,11 @@
+{
+  "schema": "greyward.office-automation-policy/v1",
+  "repository": "MANTIS-devlab/GREYWARD-office-updates",
+  "enabled": false,
+  "periodHours": 144,
+  "retryHours": 24,
+  "keepGenerations": 3,
+  "graceHours": 48,
+  "fedora": 44,
+  "architecture": "x86_64"
+}

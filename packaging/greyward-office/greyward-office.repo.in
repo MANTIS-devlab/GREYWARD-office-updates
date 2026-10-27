@@ -1,0 +1,12 @@
+# Publication template only. Do not install before the signed repository and
+# its independently verified production public key have been published.
+[greyward-office]
+name=GREYWARD Office
+baseurl=https://downloads.sourceforge.net/project/greyward/repositories/office/fedora/$releasever/$basearch/
+enabled=0
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-greyward-office.gpg
+skip_if_unavailable=False
+metadata_expire=6h
+includepkgs=greyward-writer greyward-sheets greyward-pdf greyward-slides

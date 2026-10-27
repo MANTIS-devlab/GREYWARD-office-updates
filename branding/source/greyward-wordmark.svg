@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="112" viewBox="0 0 680 112" role="img" aria-labelledby="title">
+  <title id="title">GREYWARD wordmark</title>
+  <g fill="#e6e9ed">
+    <path d="M8 20h68v16H27v40h34V62H43V47h37v45H8Z"/>
+    <path d="M98 20h61c20 0 31 10 31 28 0 13-6 22-18 26l22 18h-28l-19-16h-29v16H98Zm20 16v24h38c9 0 13-4 13-12s-4-12-13-12Z"/>
+    <path d="M211 20h76v16h-56v12h49v15h-49v13h57v16h-77Z"/>
+    <path d="M302 20h24l25 28 25-28h24l-39 45v27h-20V65Z"/>
+    <path d="M408 20h21l14 49 19-49h19l19 49 14-49h21l-25 72h-20l-19-46-18 46h-20Z"/>
+    <path d="m565 20 39 72h-22l-7-14h-42l-7 14h-22l39-72Zm-24 42h26l-13-25Z"/>
+    <path d="M610 20h61v16h-41v40h41v16h-61Zm20 28h31v16h-31Z"/>
+  </g>
+</svg>
+

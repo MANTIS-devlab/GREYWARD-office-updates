@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 128 128">
+ <title>GREYWARD Slides application</title>
+ <defs><linearGradient id="body" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#41352C"/><stop offset="1" stop-color="#0B0D10"/></linearGradient><linearGradient id="accent" x2="1" y2="1"><stop stop-color="#EDC7A5"/><stop offset="1" stop-color="#B77F51"/></linearGradient><linearGradient id="edge" x2="1" y2="1"><stop stop-color="#AFBEC9"/><stop offset="1" stop-color="#665341"/></linearGradient></defs>
+ <rect x="12" y="12" width="104" height="104" rx="25" fill="url(#body)" stroke="url(#edge)" stroke-width="2"/>
+ <rect x="19" y="19" width="90" height="90" rx="19" fill="none" stroke="#C68D5F" stroke-opacity=".22"/>
+ <rect x="31" y="34" width="66" height="45" rx="6" fill="none" stroke="url(#accent)" stroke-width="5"/><path d="M44 66v-9m13 9V47m13 19V53" stroke="url(#accent)" stroke-width="6" stroke-linecap="round"/><path d="m80 49 10 8-10 8Z" fill="#EDC7A5"/><path d="M64 81v9m-11 0h22" stroke="#C68D5F" stroke-width="4" stroke-linecap="round"/>
+ <path d="M48 100h32" stroke="#C68D5F" stroke-width="3" stroke-linecap="round"/>
+</svg>

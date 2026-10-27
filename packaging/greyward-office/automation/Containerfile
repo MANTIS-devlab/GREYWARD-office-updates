@@ -1,0 +1,10 @@
+FROM registry.fedoraproject.org/fedora@sha256:de3396aa9d2452c5affd4a0b6eff9d3d0a7f3af58e243827790963c30e2d5e2c
+RUN dnf5 -y install gcc gcc-c++ make cmake git python3 rpm-build rpm-sign cpio shadow-utils \
+    createrepo_c gnupg2 curl tar xz alsa-lib-devel fontconfig-devel freetype-devel \
+    libxkbcommon-devel libX11-devel libXcursor-devel libXi-devel libXrandr-devel \
+    libxcb-devel mesa-libEGL-devel mesa-libGL-devel mesa-dri-drivers vulkan-loader-devel \
+    wayland-devel openssl-devel librsvg2-tools cups-client xdg-utils shared-mime-info \
+    desktop-file-utils xorg-x11-server-Xvfb xorg-x11-utils dbus-daemon iproute procps-ng \
+    && dnf5 clean all
+RUN useradd --uid 1000 --create-home builder && install -d -o builder -g builder /build
+WORKDIR /build

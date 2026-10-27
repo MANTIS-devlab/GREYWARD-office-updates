@@ -1,0 +1,44 @@
+title = "GREYWARD public source secret checks"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Exact SHA-256 of the committed Office public distribution key, not signing material"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['(^|/)packaging/greyward-office/channel\.json$']
+regexTarget = "secret"
+regexes = ['^4e637c435f8c733d02656b796b42ccf80ebeb596b527b718fc02007053790997$']
+
+[[allowlists]]
+description = "Exact verified dependency fingerprints and deliberately fake classifier fixture"
+regexTarget = "secret"
+regexes = [
+  '^8b124b52da2b0c8a54b338969ebc108488ca1caf718fb45ba6ffee6c7adfcbe0$',
+  '^57ae10ee0b4c1339056ce10f9450597b95ca796bbfae65ca1d2348040e194cd5$',
+  '^a7eeba0607f0e166beb7f426aac87670fd39c66f9e76bac859ffb72cfca26aea$',
+  '^4f185cdfc1cba27e6e6f1a85444d40f90f172349b82afc7f09e33c7b34652cd8$',
+  '^ghp_123456789012345678$'
+]
+
+[[allowlists]]
+description = "Exact upstream Polkit QML preimage, verified in the pinned DMS source"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['(^|/)security-center/packaging/application-security/authentication/assemble\.py$']
+regexTarget = "secret"
+regexes = [
+  '^1afdb4a82d45f3c0fd02e865fe39ddd7c4d45a40f1fc22a9ae5f0d45aa7e3764$'
+]
+
+[[allowlists]]
+description = "Artifact fingerprints in the canonical DMS release manifest"
+targetRules = ["generic-api-key", "discord-api-token"]
+condition = "AND"
+paths = ['(^|/)environment/production/(dms-release|dms-2\.0-candidate)\.json$']
+regexTarget = "line"
+regexes = [
+  '^\s*"[^"]+\.(?:js|qml|json|svg|png)": "[0-9a-f]{64}",?$',
+  '^\s*"(?:usbguardAuthApprovalSha256|usbguardAuthApprovalSourceSha256)": "[0-9a-f]{64}",?$'
+]

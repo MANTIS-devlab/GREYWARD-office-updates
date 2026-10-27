@@ -1,0 +1,82 @@
+name: Office isolated application
+on:
+  workflow_call:
+    inputs:
+      slug:
+        required: true
+        type: string
+      pilot:
+        required: true
+        type: boolean
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    permissions:
+      contents: read
+    outputs:
+      artifact: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: office-candidate
+          path: candidate
+      - run: docker build -t office-tools -f packaging/greyward-office/automation/Containerfile .
+      - env:
+          SLUG: ${{ inputs.slug }}
+        run: |
+          set -euo pipefail
+          mkdir result && chmod 0777 result
+          docker run --rm --memory=8g --memory-swap=8g --cpus=2 --user=1000:1000 \
+            --cap-drop=ALL --security-opt=no-new-privileges \
+            -v "$PWD:/source:ro" -v "$PWD/candidate:/candidate:ro" -v "$PWD/result:/result" \
+            office-tools bash /source/packaging/greyward-office/automation/ci-build.sh "$SLUG"
+          python3 - "$SLUG" <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0,'packaging/greyward-office/automation')
+          from transfer import validate_transfer
+          validate_transfer(Path.cwd(),Path('result'),Path('candidate/source.json'),sys.argv[1])
+          PY
+      - id: upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: office-build-${{ inputs.slug }}
+          path: result
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+  transfer:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: office-candidate
+          path: candidate
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: office-build-${{ inputs.slug }}
+          path: incoming
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          SLUG: ${{ inputs.slug }}
+          ARTIFACT_ID: ${{ needs.build.outputs.artifact }}
+          PILOT: ${{ inputs.pilot }}
+        run: |
+          args=()
+          if [ "$PILOT" = true ]; then args+=(--pilot); fi
+          python3 packaging/greyward-office/automation/transfer.py stage --incoming incoming \
+            --candidate candidate/source.json --slug "$SLUG" --artifact-id "$ARTIFACT_ID" "${args[@]}"

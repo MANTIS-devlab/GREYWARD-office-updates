@@ -1,0 +1,150 @@
+name: Office six-day distribution
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+    inputs:
+      pilot:
+        description: Build and test only; no signing or release publication
+        type: boolean
+        default: true
+      force:
+        description: Check before the next six-day deadline
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: office-f44-x86_64-distribution
+  cancel-in-progress: false
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    outputs:
+      due: ${{ steps.gate.outputs.due }}
+      generation: ${{ steps.gate.outputs.generation }}
+      bootstrap: ${{ steps.gate.outputs.bootstrap }}
+      verify: ${{ steps.gate.outputs.verify }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PILOT: ${{ github.event_name == 'workflow_dispatch' && inputs.pilot }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+        run: |
+          args=()
+          if [ "$PILOT" = true ]; then args+=(--pilot); fi
+          if [ "$FORCE" = true ]; then args+=(--force); fi
+          python3 packaging/greyward-office/automation/release.py gate "${args[@]}"
+  candidate:
+    needs: gate
+    if: needs.gate.outputs.due == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      build: ${{ steps.candidate.outputs.build }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest tests.test_office_automation tests.test_office_upstream
+      - id: candidate
+        env:
+          GENERATION: ${{ needs.gate.outputs.generation }}
+          BOOTSTRAP: ${{ needs.gate.outputs.bootstrap }}
+        run: |
+          args=()
+          if [ "$BOOTSTRAP" = true ]; then args+=(--bootstrap); fi
+          python3 packaging/greyward-office/automation/candidate.py --repo . --cache "$RUNNER_TEMP/cache" --output candidate --generation "$GENERATION" "${args[@]}"
+          python3 - <<'PY'
+          import json, os
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write('build=' + json.dumps(json.load(open('candidate/decision.json'))['build']) + '\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: office-candidate
+          path: candidate
+          retention-days: 1
+          if-no-files-found: error
+  apps:
+    needs: [gate, candidate]
+    if: needs.candidate.outputs.build == 'true'
+    strategy:
+      max-parallel: 1
+      fail-fast: true
+      matrix:
+        slug: [writer, sheets, pdf, slides]
+    uses: ./.github/workflows/office-app.yml
+    permissions:
+      contents: write
+      actions: write
+    with:
+      slug: ${{ matrix.slug }}
+      pilot: ${{ github.event_name == 'workflow_dispatch' && inputs.pilot }}
+  no-change:
+    needs: [gate, candidate]
+    if: needs.candidate.outputs.build == 'false' && !(github.event_name == 'workflow_dispatch' && inputs.pilot)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 packaging/greyward-office/automation/release.py checkpoint
+  publish:
+    needs: [gate, candidate, apps]
+    if: >-
+      always() && needs.gate.result == 'success' &&
+      !(github.event_name == 'workflow_dispatch' && inputs.pilot) &&
+      ((needs.apps.result == 'success' && needs.candidate.outputs.build == 'true') || needs.gate.outputs.verify == 'true')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: needs.gate.outputs.verify != 'true'
+        with:
+          name: office-candidate
+          path: candidate
+      - run: docker build -t office-tools -f packaging/greyward-office/automation/Containerfile .
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          SIGNING_KEY: ${{ secrets.OFFICE_SIGNING_SUBKEY }}
+          VERIFY_ONLY: ${{ needs.gate.outputs.verify }}
+        run: |
+          set -euo pipefail
+          test -n "$SIGNING_KEY"
+          umask 077
+          mkdir "$RUNNER_TEMP/signing"
+          printf '%s' "$SIGNING_KEY" > "$RUNNER_TEMP/signing/subkey.asc"
+          unset SIGNING_KEY
+          trap 'rm -rf "$RUNNER_TEMP/signing"' EXIT
+          if [ "$VERIFY_ONLY" != true ]; then
+            python3 packaging/greyward-office/automation/transfer.py fetch --candidate candidate/source.json --output incoming
+          fi
+          docker run --rm --memory=8g --memory-swap=8g --cpus=2 --security-opt=no-new-privileges \
+            -e GH_TOKEN -e GITHUB_REPOSITORY -e GITHUB_REF -e GITHUB_RUN_ID -e VERIFY_ONLY \
+            -v "$PWD:/source:ro" -v "$RUNNER_TEMP/signing:/keys:ro" \
+            office-tools bash -euc '
+              mkdir -m700 /build/gnupg
+              export GNUPGHOME=/build/gnupg
+              gpg --batch --import /keys/subkey.asc
+              if [ "$VERIFY_ONLY" = true ]; then
+                python3 /source/packaging/greyward-office/automation/release.py verify --repo /source --home /build/gnupg --output /build/verified
+              else
+                python3 /source/packaging/greyward-office/automation/release.py publish --repo /source --home /build/gnupg --incoming /source/incoming --candidate /source/candidate/source.json --output /build/published
+              fi'

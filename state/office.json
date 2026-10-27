@@ -1,0 +1,10 @@
+{
+  "schema": "greyward.office-automation-state/v1",
+  "epoch": "2026-10-27T18:15:08Z",
+  "completedCycle": -1,
+  "lastAttempt": null,
+  "current": null,
+  "generations": [],
+  "pending": null,
+  "nextGeneration": 1
+}
