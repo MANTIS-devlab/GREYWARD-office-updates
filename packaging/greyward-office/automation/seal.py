@@ -25,7 +25,7 @@ def validate_candidate(base, value):
             raise ValueError('Candidate changed trusted recipe: ' + key)
     if len(value['applications']) != 4:
         raise ValueError('Incomplete candidate family')
-    mutable = {'version', 'tag', 'commit', 'url', 'archive', 'sha256', 'cargoLockSha256', 'adaptedInputs'}
+    mutable = {'version', 'tag', 'commit', 'url', 'archive', 'sha256', 'cargoLockSha256', 'adaptedInputs', 'fontsWorkflowSource'}
     for old, new in zip(base['applications'], value['applications']):
         if set(old) != set(new) or any(old[k] != new[k] for k in old if k not in mutable):
             raise ValueError('Candidate changed reviewed identity/patch/resources')
@@ -33,7 +33,7 @@ def validate_candidate(base, value):
             raise ValueError('Invalid stable version')
         if tuple(map(int, new['version'].split('.'))) < tuple(map(int, old['version'].split('.'))):
             raise ValueError('Upstream downgrade')
-        if new['version'] == old['version'] and any(new[k] != old[k] for k in mutable):
+        if new['version'] == old['version'] and any(new.get(k) != old.get(k) for k in mutable):
             raise ValueError('Published immutable version inputs changed')
         commit = new['commit']
         if (not re.fullmatch(r'[a-f0-9]{40}', commit) or new['tag'] != 'v' + new['version']
@@ -42,6 +42,9 @@ def validate_candidate(base, value):
                 or set(new['adaptedInputs']) != set(old['adaptedInputs'])
                 or not all(SHA.fullmatch(s) for s in [new['sha256'], new['cargoLockSha256'], *new['adaptedInputs'].values()])):
             raise ValueError('Candidate provenance/path drift')
+        if new['version'] != old['version'] and new.get('fontsWorkflowSource'):
+            if new['fontsWorkflowSource'].get('commit') != commit or not SHA.fullmatch(new['fontsWorkflowSource'].get('sha256', '')):
+                raise ValueError('Font workflow provenance must refer to the captured release commit')
 
 
 def recipe_files(repo):
@@ -114,5 +117,8 @@ def seal(repo, incoming, candidate, output):
     inventory = {'schema': 'greyward.office-release/v1', 'generation': lock['rpmRelease'],
                  'versions': {a['slug']: a['version'] for a in lock['applications']},
                  'files': {p.name: digest(p) for p in sorted(files)}}
+    import os
+    inventory['builder'] = {'repository': os.environ.get('GITHUB_REPOSITORY'),
+                            'run': os.environ.get('GITHUB_RUN_ID'), 'recipeCommit': os.environ.get('GITHUB_SHA')}
     (output / 'inventory.json').write_text(json.dumps(inventory, indent=2) + '\n')
     return inventory

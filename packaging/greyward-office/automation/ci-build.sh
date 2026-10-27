@@ -32,3 +32,12 @@ cp /build/roundtrip/results.json /build/result/"$slug"-engine.json
 cp /build/gui.json /build/result/"$slug"-gui.json
 rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort > /build/result/"$slug"-builder-packages.txt
 cp -a /build/result/. /result/
+python3 - <<'PY'
+import json, shutil
+from pathlib import Path
+result = {name: (Path('/sys/fs/cgroup') / name).read_text().strip()
+          for name in ('memory.peak', 'memory.max') if (Path('/sys/fs/cgroup') / name).is_file()}
+result['diskFreeBytes'] = shutil.disk_usage('/build').free
+print('OFFICE_RESOURCE_READBACK=' + json.dumps(result))
+PY
+echo "OFFICE_BUILD_ELAPSED_SECONDS=$SECONDS"

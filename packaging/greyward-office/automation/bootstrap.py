@@ -21,6 +21,9 @@ def export(repo, output):
         target = output / source.relative_to(repo)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(source.read_bytes().replace(b'\r\n', b'\n'))
+    policy_path = output / 'packaging/greyward-office/automation/policy.json'
+    policy = json.loads(policy_path.read_text()); policy['enabled'] = False
+    policy_path.write_text(json.dumps(policy, indent=2) + '\n', newline='\n')
     for name in ('LICENSE', '.gitleaks.toml'):
         if (repo / name).is_file(): (output / name).write_bytes((repo / name).read_bytes().replace(b'\r\n', b'\n'))
     (output / 'tests/__init__.py').write_text('')
@@ -52,6 +55,8 @@ def export(repo, output):
         'public key gate the channel. Failed compatibility checks keep the prior version.\n\n'
         'This repository is a reviewed component export of '
         '[GREYWARD](https://github.com/MANTIS-devlab/GREYWARD), not a development-machine image.\n'
+        'The export inventory records the bootstrap snapshot; operational state and\n'
+        'validated source locks subsequently evolve through the distribution workflow.\n'
         , newline='\n')
     (output / '.gitattributes').write_text('* text=auto eol=lf\n', newline='\n')
     (output / '.gitignore').write_text('__pycache__/\n*.pyc\ncandidate/\nincoming/\nresult/\n', newline='\n')

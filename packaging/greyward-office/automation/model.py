@@ -7,6 +7,8 @@ UTC = dt.timezone.utc
 SLUGS = ('writer', 'sheets', 'pdf', 'slides')
 TAG = re.compile(r'office-f44-x86_64-g([1-9][0-9]{0,8})\Z')
 SHA = re.compile(r'[0-9a-f]{64}\Z')
+MAX_ARTIFACT_BYTES = 350 * 1024 * 1024
+LOG_RETENTION_DAYS = 14
 
 
 def instant(value):
@@ -49,16 +51,18 @@ def validate_state(state):
     if state.get('lastAttempt'):
         instant(state['lastAttempt'])
     seen = set()
+    ids = set()
     for item in state['generations']:
         match = TAG.fullmatch(item.get('tag', ''))
         if (not match or item.get('generation') != int(match[1]) or item['tag'] in seen
-                or type(item.get('releaseId')) is not int or item['releaseId'] < 1
+                or type(item.get('releaseId')) is not int or item['releaseId'] < 1 or item['releaseId'] in ids
                 or not SHA.fullmatch(item.get('inventorySha256', ''))):
             raise ValueError('Invalid/duplicate owned generation')
         instant(item['publishedAt'])
         if item.get('withdrawnAt'):
             instant(item['withdrawnAt'])
         seen.add(item['tag'])
+        ids.add(item['releaseId'])
     if state.get('current') is not None and state['current'] not in seen:
         raise ValueError('Current generation is missing')
     if state.get('pending'):
@@ -116,6 +120,7 @@ def promote(policy, state, generation, cycle, now):
     result['generations'].append(copy.deepcopy(generation))
     result['current'] = generation['tag']
     result['pending'] = None
+    result['nextGeneration'] = max(result['nextGeneration'], generation['generation'] + 1)
     result['completedCycle'] = max(cycle, result['completedCycle'])
     for old in active(result)[policy['keepGenerations']:]:
         next(g for g in result['generations'] if g['tag'] == old['tag'])['withdrawnAt'] = timestamp(now)

@@ -23,6 +23,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: write
+      actions: write
     outputs:
       due: ${{ steps.gate.outputs.due }}
       generation: ${{ steps.gate.outputs.generation }}
@@ -108,6 +109,7 @@ jobs:
       !(github.event_name == 'workflow_dispatch' && inputs.pilot) &&
       ((needs.apps.result == 'success' && needs.candidate.outputs.build == 'true') || needs.gate.outputs.verify == 'true')
     runs-on: ubuntu-24.04
+    environment: office-signing
     timeout-minutes: 90
     permissions:
       contents: write
@@ -137,7 +139,7 @@ jobs:
             python3 packaging/greyward-office/automation/transfer.py fetch --candidate candidate/source.json --output incoming
           fi
           docker run --rm --memory=8g --memory-swap=8g --cpus=2 --security-opt=no-new-privileges \
-            -e GH_TOKEN -e GITHUB_REPOSITORY -e GITHUB_REF -e GITHUB_RUN_ID -e VERIFY_ONLY \
+            -e GH_TOKEN -e GITHUB_REPOSITORY -e GITHUB_REF -e GITHUB_RUN_ID -e GITHUB_SHA -e VERIFY_ONLY \
             -v "$PWD:/source:ro" -v "$RUNNER_TEMP/signing:/keys:ro" \
             office-tools bash -euc '
               mkdir -m700 /build/gnupg

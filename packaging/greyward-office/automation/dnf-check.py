@@ -27,6 +27,7 @@ def check(repository, home, fingerprint, output, previous=None, remote=None):
     if os.geteuid() != 0:
         raise ValueError('Disposable database fixture needs container root')
     output.mkdir(parents=True, exist_ok=False)
+    host_before = sorted(run(['rpm', '-qa']).splitlines())
     db = Path(run(['rpm', '--eval', '%{_dbpath}']).strip())
     if not (db / 'rpmdb.sqlite').is_file():
         raise ValueError('Expected Fedora SQLite RPM database')
@@ -52,7 +53,9 @@ def check(repository, home, fingerprint, output, previous=None, remote=None):
             old = list(previous.glob('*.x86_64.rpm'))
             if len(old) != 4: raise ValueError('Previous generation incomplete')
             run(['rpm', '--root', root, '-i', '--justdb', '--nodeps', '--noscripts', *old])
-        before = run(['rpm', '--root', root, '-qa'])
+        # DNF may legitimately import repository certificates into this private
+        # database. Compare installed package identities, not key rows/order.
+        before = sorted(x for x in run(['rpm', '--root', root, '-qa']).splitlines() if not x.startswith('gpg-pubkey-'))
         repos = output / label / 'repos'; repos.mkdir()
         source_key = 'mirrorlist' if location.endswith('/mirrorlist.txt') else 'baseurl'
         (repos / 'office.repo').write_text('[office-ci]\nname=Office CI\n' + source_key + '=' + location +
@@ -65,7 +68,8 @@ def check(repository, home, fingerprint, output, previous=None, remote=None):
                    'upgrade' if previous else 'install', *PACKAGES]
         result = subprocess.run(command, capture_output=True, text=True, timeout=600)
         (output / (label + '.log')).write_text(result.stdout + result.stderr)
-        if run(['rpm', '--root', root, '-qa']) != before:
+        after = sorted(x for x in run(['rpm', '--root', root, '-qa']).splitlines() if not x.startswith('gpg-pubkey-'))
+        if after != before:
             raise ValueError('Disposable headers changed during test transaction')
         return result
 
@@ -90,6 +94,8 @@ def check(repository, home, fingerprint, output, previous=None, remote=None):
     invalid = transaction('untrusted', negative.as_uri())
     if invalid.returncode == 0 or not any(word in (invalid.stdout + invalid.stderr).lower() for word in ('signature', 'public key', 'gpg', 'pgp')):
         raise ValueError('Untrusted package was not rejected for its signature')
+    if sorted(run(['rpm', '-qa']).splitlines()) != host_before:
+        raise ValueError('Host package identities changed during disposable-root checks')
     evidence = {'real_dnf_transaction_test': True, 'operation': 'upgrade' if previous else 'initial-install',
                 'untrusted_rpm_rejected': True, 'host_unchanged': True, 'reference_reboot_test': False}
     (output / 'results.json').write_text(json.dumps(evidence, indent=2) + '\n')

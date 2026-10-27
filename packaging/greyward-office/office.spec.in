@@ -1,6 +1,10 @@
 # Bound packaging workers as well as Cargo. Moderate zstd compression avoids
 # debug-package compression exhausting the isolated builder's memory budget.
 %global _smp_build_ncpus 2
+# Retain Fedora hardening/notes, but override its debug=2/codegen-units=1 last.
+# Otherwise RPM's exported RUSTFLAGS override Cargo's bounded release profile
+# and the Writer native test can exceed the isolated 8 GiB builder's limit.
+%global build_rustflags %{build_rustflags} -Cdebuginfo=0 -Ccodegen-units=16
 %global _binary_payload w6T2.zstdio
 %global _source_payload w6T2.zstdio
 

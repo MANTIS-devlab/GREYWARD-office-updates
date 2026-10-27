@@ -76,16 +76,20 @@ def adapt(app, old_tree, tree, patch):
     workflow = (tree / '.github/workflows/release.yml').read_text()
     if app['fontsCommit'] not in workflow:
         raise ValueError('Font resource changed; review required')
-    for name, expected in ((app.get('mimeSource'), app.get('mimeSha256')),
-                           ('ATTRIBUTION.toml' if app.get('runtimeResources') else None,
-                            app.get('resourceManifestSha256'))):
+    # mimeSha256 describes the patched installed XML, not pristine upstream XML.
+    # Compare pristine versions here; prepare.py checks the patched digest later.
+    if app.get('mimeSource') and (tree / app['mimeSource']).read_bytes() != (old_tree / app['mimeSource']).read_bytes():
+        raise ValueError('MIME definition changed; review required')
+    for name, expected in (('ATTRIBUTION.toml' if app.get('runtimeResources') else None,
+                            app.get('resourceManifestSha256')),):
         if name and digest(tree / name) != expected:
             raise ValueError('MIME/runtime resource changed; review required: ' + name)
     original = {name: (tree / name).read_bytes() for name in app['adaptedInputs']}
     expected = exact_adaptations(patch.read_bytes(), original)
     hashes = {name: digest(tree / name) for name in original}
-    subprocess.run(['git', 'apply', '--check', str(patch.resolve())], cwd=tree, check=True)
-    subprocess.run(['git', 'apply', str(patch.resolve())], cwd=tree, check=True)
+    git = ['git', '-c', 'core.autocrlf=false', '-c', 'core.eol=lf', 'apply']
+    subprocess.run([*git, '--check', str(patch.resolve())], cwd=tree, check=True)
+    subprocess.run([*git, str(patch.resolve())], cwd=tree, check=True)
     if any((tree / name).read_bytes() != expected[name] for name in original):
         raise ValueError('git apply differed from the unique exact transformations')
     return hashes
@@ -119,6 +123,8 @@ def prepare_family(repo, cache, output, bootstrap=False, generation=None):
             tree = extract(archive, scratch, app['upstream'] + '-' + commit)
             app['adaptedInputs'] = adapt(app, old_tree, tree, patch)
             app['cargoLockSha256'] = digest(tree / 'Cargo.lock')
+            if app.get('fontsWorkflowSource'):
+                app['fontsWorkflowSource'] = {'commit': commit, 'sha256': digest(tree / '.github/workflows/release.yml')}
         app.update(archive_data, version=value['version'], tag=value['tag'], commit=commit)
         changed.append(app['slug'])
     if changed:

@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 
 from github import GitHub
-from model import UTC, SLUGS, timestamp
+from model import UTC, SLUGS, MAX_ARTIFACT_BYTES, timestamp
 from release import STATE, encode, load_state, upload
 from seal import digest, validate_candidate
 
@@ -30,7 +30,7 @@ def validate_transfer(repo, incoming, candidate, slug):
     if {p.name for p in files} != expected_files(lock, slug) or any(not p.is_file() or p.is_symlink() for p in files):
         raise ValueError('Build output must be exactly the regular expected five files')
     # Avoid exceeding the free Actions artifact allowance even as sources grow.
-    if sum(p.stat().st_size for p in files) > 350 * 1024 * 1024:
+    if sum(p.stat().st_size for p in files) > MAX_ARTIFACT_BYTES:
         raise ValueError('One-app artifact exceeds the reviewed free-storage budget')
     engine = json.loads((incoming / (slug + '-engine.json')).read_text())
     gui = json.loads((incoming / (slug + '-gui.json')).read_text())

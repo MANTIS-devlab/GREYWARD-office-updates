@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 
 from github import GitHub, REPOSITORY
-from model import UTC, TAG, SLUGS, active, cleanup_plan, decision, instant, promote, timestamp, validate_policy, validate_state
+from model import UTC, TAG, SLUGS, LOG_RETENTION_DAYS, active, cleanup_plan, decision, instant, promote, timestamp, validate_policy, validate_state
 from seal import digest, seal, validate_candidate, verify_family
 
 HERE = Path(__file__).resolve().parent
@@ -51,6 +51,9 @@ def assert_current_channel(api, state):
 
 
 def clean(api, policy, state, now, apply=False):
+    validate_policy(policy)
+    if apply and not policy['enabled']:
+        raise ValueError('Cleanup policy is disabled')
     releases = api.releases()
     plan = cleanup_plan(policy, state, releases, now)
     pending = state.get('pending')
@@ -77,14 +80,17 @@ def clean(api, policy, state, now, apply=False):
 
 def gate(repo, api, now, force=False, pilot=False):
     policy = load_policy(repo); state = load_state(api)
+    if not pilot and policy['enabled']:
+        expire_ci_storage(api, now, os.environ['GITHUB_RUN_ID'])
     if not pilot and policy['enabled'] and (not state['current'] or state.get('channelVerified') == state['current']):
         state, _ = clean(api, policy, state, now, apply=True)
     effective = dict(policy, enabled=True) if pilot else policy
     result = decision(effective, state, now, force)
-    result['bootstrap'] = state['current'] is None
+    initial = state['current'] is None
     result['verify'] = result['reason'] == 'channel-unverified' and not pilot
     lock = json.loads((repo / 'packaging/greyward-office/source.json').read_text())
-    result['generation'] = max(lock['rpmRelease'] + (0 if result['bootstrap'] else 1), state['nextGeneration'])
+    result['bootstrap'] = initial or digest(repo / 'packaging/greyward-office/source.json') != state.get('sourceManifestSha256')
+    result['generation'] = max(lock['rpmRelease'] + (0 if initial else 1), state['nextGeneration'])
     if result['due'] and not pilot:
         state['lastAttempt'] = timestamp(now)
         state['nextGeneration'] = result['generation'] + 1
@@ -92,7 +98,59 @@ def gate(repo, api, now, force=False, pilot=False):
         state['attemptCycle'] = result['cycle']
         state['reservedGeneration'] = result['generation']
         api.commit({STATE: encode(state)}, 'Claim six-day Office verification cycle')
+    if result['due']: check_certificate(repo, now)
+    if result['verify']:
+        last = state.get('lastVerificationAttempt')
+        if last and (now - instant(last)).total_seconds() < policy['retryHours'] * 3600:
+            result['verify'] = False
+        else:
+            state['lastVerificationAttempt'] = timestamp(now)
+            api.commit({STATE: encode(state)}, 'Claim interrupted Office channel verification')
     return result
+
+
+def check_certificate(repo, now):
+    public = repo / 'packaging/greyward-office/keys/RPM-GPG-KEY-greyward-office.gpg'
+    rows = subprocess.check_output(['gpg', '--batch', '--with-colons', '--show-keys', str(public)], text=True)
+    keys = [line.split(':') for line in rows.splitlines() if line.startswith(('pub:', 'sub:'))]
+    deadline = int(now.timestamp()) + 30 * 24 * 3600
+    primaries = [r for r in keys if r[0] == 'pub']
+    signing = [r for r in keys if r[0] == 'sub' and 's' in r[11] and r[1] not in ('r', 'e', 'd')]
+    if len(primaries) != 1 or primaries[0][1] in ('r', 'e', 'd') or not signing:
+        raise ValueError('Expected one Office certificate and a dedicated signing subkey')
+    if (primaries[0][6] and int(primaries[0][6]) <= deadline) or not any(not r[6] or int(r[6]) > deadline for r in signing):
+        raise ValueError('Office signing certificate/subkey expires within 30 days; renew before promotion')
+
+
+def expire_ci_storage(api, now, current_run):
+    """Own completed pipeline artifacts immediately; own CI logs after 14 days."""
+    owned_paths = {'.github/workflows/office.yml', '.github/workflows/validation.yml'}
+    runs = {}
+    def owned(run):
+        return (str(run['id']) != str(current_run) and run.get('status') == 'completed'
+                and run.get('path') in owned_paths and run.get('head_branch') == 'main'
+                and run.get('head_repository', {}).get('full_name') == REPOSITORY)
+    def listing(endpoint, field):
+        result = []
+        for page in range(1, 11):
+            values = api.request(endpoint + '&page=' + str(page))[field]
+            result.extend(values)
+            if len(values) < 100: return result
+        raise ValueError('CI inventory exceeds bounded pagination')
+    # Inventory first, then mutate: deleting while paginating would skip entries.
+    for item in listing('/actions/artifacts?per_page=100', 'artifacts'):
+        if item['name'] not in {'office-candidate', *('office-build-' + s for s in SLUGS)}:
+            continue
+        run_id = item.get('workflow_run', {}).get('id')
+        if not run_id or str(run_id) == str(current_run): continue
+        if run_id not in runs: runs[run_id] = api.request('/actions/runs/' + str(run_id))
+        if owned(runs[run_id]): api.request('/actions/artifacts/' + str(item['id']), 'DELETE')
+    from datetime import timedelta
+    cutoff = timestamp(now - timedelta(days=LOG_RETENTION_DAYS))
+    from urllib.parse import quote
+    for run in listing('/actions/runs?per_page=100&created=' + quote('<' + cutoff, safe=''), 'workflow_runs'):
+        if owned(run) and instant(run['created_at']) < instant(cutoff):
+            api.request('/actions/runs/' + str(run['id']), 'DELETE')
 
 
 def checkpoint(api, now):
@@ -132,9 +190,10 @@ def sign_bundle(repo, bundle, home):
     for rpm in sorted(bundle.glob('*.rpm')):
         command(['rpmsign', '--define', '_openpgp_sign_id ' + fingerprint, '--addsign', rpm], env)
         inventory['files'][rpm.name] = digest(rpm)
+    shutil.copyfile(public, bundle / 'RPM-GPG-KEY-greyward-office')
+    inventory['files']['RPM-GPG-KEY-greyward-office'] = digest(public)
     (bundle / 'inventory.json').write_bytes(encode(inventory))
     command(['gpg', '--batch', '--armor', '--local-user', fingerprint, '--detach-sign', bundle / 'inventory.json'], env)
-    shutil.copyfile(public, bundle / 'RPM-GPG-KEY-greyward-office')
     return fingerprint, env
 
 
@@ -205,6 +264,11 @@ def publish(repo, api, incoming, candidate, output, home, now):
     shutil.copyfile(bundle / 'RPM-GPG-KEY-greyward-office', local / 'RPM-GPG-KEY-greyward-office')
     metadata(local, fingerprint, env)
     native_test(local, home, fingerprint, output / 'dnf-local', previous)
+    shutil.copyfile(output / 'dnf-local/results.json', bundle / 'dnf-native.json')
+    inventory = json.loads((bundle / 'inventory.json').read_text())
+    inventory['files']['dnf-native.json'] = digest(bundle / 'dnf-native.json')
+    (bundle / 'inventory.json').write_bytes(encode(inventory))
+    command(['gpg', '--batch', '--yes', '--armor', '--local-user', fingerprint, '--detach-sign', bundle / 'inventory.json'], env)
     releases = api.releases()
     release = next((r for r in releases if r['tag_name'] == tag), None)
     if release and (not state.get('pending') or state['pending']['releaseId'] != release['id']):
@@ -245,6 +309,7 @@ def publish(repo, api, incoming, candidate, output, home, now):
     result['metadataCommit'] = snapshot
     result['channelVerified'] = None
     result['lastVerifiedAt'] = timestamp(now)
+    result['sourceManifestSha256'] = digest(candidate)
     api.commit({STATE: encode(result), POINTER: (url + '\n').encode(),
                 'packaging/greyward-office/source.json': candidate.read_bytes()}, 'Promote verified Office generation ' + tag)
     native_test(local, home, fingerprint, output / 'dnf-mirrorlist', previous,

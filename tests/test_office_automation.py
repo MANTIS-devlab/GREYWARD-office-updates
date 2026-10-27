@@ -5,6 +5,10 @@ import json
 from pathlib import Path
 import sys
 import unittest
+import tempfile
+import hashlib
+import urllib.error
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 AUTOMATION = ROOT / 'packaging/greyward-office/automation'
@@ -120,6 +124,139 @@ class CompatibilityTests(unittest.TestCase):
     def test_binary_and_malformed_hunks_block(self):
         for patch in (self.PATCH.replace(b'@@ -1,3 +1,3', b'@@ -1,9 +1,9'), self.PATCH + b'Binary files differ\n'):
             with self.assertRaises(ValueError): model.exact_adaptations(patch, {'src/main.rs': self.ORIGINAL})
+
+    def test_real_git_apply_matches_exact_offset_transform_and_blocks_license_drift(self):
+        from candidate import adapt
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); old, new = root / 'old', root / 'new'
+            for tree in (old,new):
+                (tree / 'src').mkdir(parents=True)
+                (tree / '.github/workflows').mkdir(parents=True)
+                (tree / 'src/main.rs').write_bytes(b'// prolog\n' + self.ORIGINAL + b'// epilog\n')
+                (tree / 'LICENSE').write_bytes(b'MIT\n')
+                (tree / 'NOTICE').write_bytes(b'Original attribution\n')
+                (tree / '.github/workflows/release.yml').write_bytes(b'fonts: pinned-fonts\n')
+            source = b'// added elsewhere\n// prolog\n' + self.ORIGINAL + b'// epilog\n'
+            (new / 'src/main.rs').write_bytes(source)
+            patchfile = root / 'reviewed.patch'; patchfile.write_bytes(self.PATCH.replace(b'@@ -1,3 +1,3', b'@@ -2,3 +2,3'))
+            app = {'noticeSha256':hashlib.sha256(b'Original attribution\n').hexdigest(),
+                   'fontsCommit':'pinned-fonts','adaptedInputs':{'src/main.rs':'unused'}}
+            hashes = adapt(app,old,new,patchfile)
+            self.assertEqual(hashes['src/main.rs'],hashlib.sha256(source).hexdigest())
+            self.assertIn(b'GREYWARD',(new/'src/main.rs').read_bytes())
+            (new/'LICENSE').write_bytes(b'Different license\n')
+            with self.assertRaisesRegex(ValueError,'license changed'): adapt(app,old,new,patchfile)
+
+    def test_pristine_mime_is_compared_before_patch_not_against_installed_hash(self):
+        from candidate import adapt
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);old,new=root/'old',root/'new'
+            for tree in (old,new):
+                (tree/'src').mkdir(parents=True);(tree/'.github/workflows').mkdir(parents=True)
+                (tree/'src/main.rs').write_bytes(self.ORIGINAL);(tree/'LICENSE').write_bytes(b'MIT\n')
+                (tree/'NOTICE').write_bytes(b'Notice\n');(tree/'.github/workflows/release.yml').write_bytes(b'fonts: pin\n')
+                (tree/'mime.xml').write_bytes(b'upstream MIME\n')
+            patchfile=root/'reviewed.patch';patchfile.write_bytes(self.PATCH)
+            app={'noticeSha256':hashlib.sha256(b'Notice\n').hexdigest(),'fontsCommit':'pin',
+                 'adaptedInputs':{'src/main.rs':'unused'},'mimeSource':'mime.xml','mimeSha256':'patched-hash-is-different'}
+            self.assertIn('src/main.rs',adapt(app,old,new,patchfile))
+
+
+class SealingTests(unittest.TestCase):
+    def setUp(self):
+        from seal import validate_candidate
+        self.validate = validate_candidate
+        self.base = json.loads((ROOT / 'packaging/greyward-office/source.json').read_text())
+
+    def test_candidate_cannot_change_trust_code_artwork_or_identity(self):
+        self.validate(self.base, copy.deepcopy(self.base))
+        for field in ('name', 'package', 'appId', 'patchSha256', 'iconSha256', 'fontsCommit'):
+            candidate = copy.deepcopy(self.base); candidate['applications'][0][field] = 'different'
+            with self.subTest(field=field), self.assertRaises(ValueError): self.validate(self.base, candidate)
+        candidate = copy.deepcopy(self.base); candidate['integrationSources']['extra.py'] = 'a' * 64
+        with self.assertRaises(ValueError): self.validate(self.base, candidate)
+
+    def test_equal_upstream_version_cannot_change_commit_or_inputs(self):
+        for field in ('commit', 'sha256', 'cargoLockSha256'):
+            candidate = copy.deepcopy(self.base); candidate['applications'][0][field] = 'b' * len(candidate['applications'][0][field])
+            with self.subTest(field=field), self.assertRaises(ValueError): self.validate(self.base, candidate)
+
+    def test_public_component_has_closed_hash_inventory_and_no_python_cache(self):
+        from bootstrap import export
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / 'component'; export(ROOT, target)
+            self.assertFalse(list(target.rglob('*.pyc')))
+            self.assertFalse(list(target.rglob('__pycache__')))
+            inventory = json.loads((target / 'component-export.json').read_text())['files']
+            actual = {p.relative_to(target).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                      for p in target.rglob('*') if p.is_file() and p.name != 'component-export.json'}
+            self.assertEqual({i['path']: i['sha256'] for i in inventory}, actual)
+            self.assertFalse((target / '.git').exists())
+            self.assertFalse((target / 'output').exists())
+            self.assertFalse(json.loads((target / 'packaging/greyward-office/automation/policy.json').read_text())['enabled'])
+
+
+class TransportTests(unittest.TestCase):
+    def test_authenticated_api_redirect_is_not_followed(self):
+        from github import NoRedirect
+        with self.assertRaises(ValueError):
+            NoRedirect().redirect_request(None, None, 302, 'Found', {}, 'https://other.invalid/')
+
+    def test_download_cannot_escape_owned_releases(self):
+        from github import GitHub
+        api = GitHub(token='deliberately-not-a-credential')
+        for url in ('https://github.com/other/repo/releases/download/a/file',
+                    'https://github.com/MANTIS-devlab/GREYWARD-office-updates/releases/download/../../other'):
+            with self.assertRaises(ValueError): api.download(url, Path('unused'))
+
+    def test_generated_commit_cannot_write_workflow_or_parent_path(self):
+        from github import GitHub
+        api = GitHub(token='deliberately-not-a-credential')
+        with patch.object(api, 'request', side_effect=[{'object': {'sha': 'a' * 40}}, {'tree': {'sha': 'b' * 40}}]) as request:
+            with self.assertRaises(ValueError): api.commit({'.github/workflows/other.yml': b'bad'}, 'invalid')
+        self.assertEqual(request.call_count, 2)
+
+
+class OrchestrationTests(unittest.TestCase):
+    def state(self):
+        policy = json.loads((AUTOMATION / 'policy.json').read_text()); policy['enabled'] = True
+        state = model.new_state('2026-01-01T00:00:00Z')
+        now = model.instant('2026-01-20T00:00:00Z')
+        for n in range(1, 5): state = model.promote(policy, state, generation(n), n, now)
+        state['metadataCommit'] = 'b' * 40; state['channelVerified'] = state['current']
+        return policy, state, now + dt.timedelta(hours=48)
+
+    def test_unverified_promotion_blocks_another_build(self):
+        policy, state, now = self.state(); state['channelVerified'] = None
+        self.assertEqual(model.decision(policy, state, now, True)['reason'], 'channel-unverified')
+
+    def test_duplicate_remote_ids_block_cleanup(self):
+        _, state, _ = self.state(); state['generations'][0]['releaseId'] = state['generations'][1]['releaseId']
+        with self.assertRaises(ValueError): model.validate_state(state)
+
+    def test_changed_pointer_and_disabled_policy_cannot_delete(self):
+        import release
+        policy, state, now = self.state()
+        class Fake:
+            def releases(self): return [{'id':101, 'tag_name':'office-f44-x86_64-g1', 'draft':False}]
+            def content(self, path): return b'changed pointer'
+            def request(self, *args, **kwargs): raise AssertionError('No deletion permitted')
+        with self.assertRaises(ValueError): release.clean(Fake(), policy, state, now, True)
+        policy['enabled'] = False
+        with self.assertRaises(ValueError): release.clean(Fake(), policy, state, now, True)
+
+    def test_cleanup_applies_exact_owned_ids_and_commits_after_deletion(self):
+        import release
+        policy, state, now = self.state(); events=[]
+        class Fake:
+            def releases(self): return [{'id':101, 'tag_name':'office-f44-x86_64-g1', 'draft':False}, {'id':999,'tag_name':'OS-0.5.2'}]
+            def content(self, path): return (release.snapshot_url(state['metadataCommit'],state['current'])+'\n').encode()
+            def request(self, path, method, **kwargs): events.append((method,path))
+            def commit(self, files, message): events.append(('COMMIT',json.loads(files[release.STATE])))
+        result, _ = release.clean(Fake(), policy, state, now, True)
+        self.assertEqual(events[:2], [('DELETE','/releases/101'),('DELETE','/git/refs/tags/office-f44-x86_64-g1')])
+        self.assertEqual([g['generation'] for g in result['generations']], [2,3,4])
+        self.assertEqual(events[2][0], 'COMMIT')
 
 
 if __name__ == '__main__': unittest.main()
