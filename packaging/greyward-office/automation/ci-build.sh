@@ -28,7 +28,9 @@ python3 tests/fixtures/office-roundtrip.py --binaries /build/target/release --ou
 cp /build/output/RPMS/x86_64/greyward-"$slug"-*.rpm /build/output/SRPMS/greyward-"$slug"-*.src.rpm /build/result/
 cp /build/roundtrip/results.json /build/result/"$slug"-engine.json
 rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort > /build/result/"$slug"-builder-packages.txt
-cp -a /build/result/. /result/
+# The host-owned bind directory is writable but its metadata is not ours.
+# Copy the regular output files, without trying to preserve that directory.
+cp /build/result/* /result/
 python3 - <<'PY'
 import json, shutil
 from pathlib import Path

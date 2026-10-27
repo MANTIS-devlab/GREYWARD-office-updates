@@ -83,7 +83,7 @@
     },
     {
       "path": "packaging/greyward-office/automation/ci-build.sh",
-      "sha256": "1f51ab63b09fe40c4330c4c5a92744ab6b1a7d17353a218eafc1dc514e07c807"
+      "sha256": "58f5237871c4f328ff988bd9d1523168e5c10a5ece78e65705fab02020be673e"
     },
     {
       "path": "packaging/greyward-office/automation/Containerfile",
