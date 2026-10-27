@@ -21,7 +21,7 @@ Source0:        @sourceName@.tar.gz
 BuildRequires:  gcc-c++, pkgconfig(alsa), pkgconfig(fontconfig), pkgconfig(xkbcommon)
 Requires:       cups-client, xdg-utils
 Requires:       greyward-security-center
-Requires:       libxkbcommon, libwayland-client, libX11, libXcursor, libXi, libXrandr
+Requires:       libxkbcommon, libxkbcommon-x11, libwayland-client, libX11, libXcursor, libXi, libXrandr
 Requires:       libglvnd-egl, vulkan-loader
 Requires:       shared-mime-info
 

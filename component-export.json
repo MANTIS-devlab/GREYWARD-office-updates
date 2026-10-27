@@ -87,7 +87,7 @@
     },
     {
       "path": "packaging/greyward-office/automation/Containerfile",
-      "sha256": "8fa2a3d214d06f5af0438265f3fa5375257ae49463d99152a617002d7cd85408"
+      "sha256": "b52bd7c3c344cab9ca9fc1397c5fb00f570a955e21762a7fde23839907a20600"
     },
     {
       "path": "packaging/greyward-office/automation/dependency-policy.json",
@@ -175,7 +175,7 @@
     },
     {
       "path": "packaging/greyward-office/office.spec.in",
-      "sha256": "c63eeb429af37fe975546b25cf5752ad5288a836e09cab0ffdbfd2e67a9a226e"
+      "sha256": "cd5f1cb60b38fc1a376697494bbfa08fabf393e43600e6e2b8715ca8f3f8f94e"
     },
     {
       "path": "packaging/greyward-office/patches/deckcraft.patch",
@@ -211,7 +211,7 @@
     },
     {
       "path": "packaging/greyward-office/source.json",
-      "sha256": "0aa9f33ae97679b5bc5833dd5bdf304cb2176fdb640c791d80c3e1725f912b77"
+      "sha256": "b6f6dd9201421b1a514f598b26bc37e98574eeec5b3bf74ed295856c8d548aac"
     },
     {
       "path": "packaging/greyward-office/stage-channel.py",
