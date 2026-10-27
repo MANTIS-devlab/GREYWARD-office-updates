@@ -1,6 +1,6 @@
 {
-  "schema": "greyward.office-channel/v1",
-  "published": false,
   "fingerprint": "35BD325945F35957C77C4CEAE9708C265A840E6C",
-  "keySha256": "d8e947e08b9752b0a14b11a431acbfe1701469aa4c8d3ae570eeb332affbde40"
+  "keySha256": "d8e947e08b9752b0a14b11a431acbfe1701469aa4c8d3ae570eeb332affbde40",
+  "published": true,
+  "schema": "greyward.office-channel/v1"
 }
