@@ -13,7 +13,7 @@ import re
 
 KEY = 'RPM-GPG-KEY-greyward-office.gpg'
 PACKAGES = 'greyward-writer greyward-sheets greyward-pdf greyward-slides'
-BASE = 'https://downloads.sourceforge.net/project/greyward/repositories/office/fedora/$releasever/$basearch/'
+MIRRORLIST = 'https://raw.githubusercontent.com/MANTIS-devlab/GREYWARD-office-updates/main/channel/f$releasever-$basearch/mirrorlist.txt'
 
 
 def stage(repo, offline, require_published=False, verify=False):
@@ -31,7 +31,7 @@ def stage(repo, offline, require_published=False, verify=False):
     config = configparser.ConfigParser(interpolation=None)
     config.read_string(template)
     if config.sections() != ['greyward-office'] or dict(config['greyward-office']) != {
-        'name': 'GREYWARD Office', 'baseurl': BASE, 'enabled': '0',
+        'name': 'GREYWARD Office', 'mirrorlist': MIRRORLIST, 'enabled': '0',
         'gpgcheck': '1', 'repo_gpgcheck': '1', 'gpgkey': 'file:///etc/pki/rpm-gpg/' + KEY,
         'skip_if_unavailable': 'False', 'metadata_expire': '6h', 'includepkgs': PACKAGES,
     }:

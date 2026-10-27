@@ -2,7 +2,7 @@
 # its independently verified production public key have been published.
 [greyward-office]
 name=GREYWARD Office
-baseurl=https://downloads.sourceforge.net/project/greyward/repositories/office/fedora/$releasever/$basearch/
+mirrorlist=https://raw.githubusercontent.com/MANTIS-devlab/GREYWARD-office-updates/main/channel/f$releasever-$basearch/mirrorlist.txt
 enabled=0
 gpgcheck=1
 repo_gpgcheck=1

@@ -23,7 +23,7 @@
     },
     {
       "path": ".gitleaks.toml",
-      "sha256": "081954f05e1cd7a082ec1aa55bd5dbf2cc49f5f602687c87f9ef0ab7c533330b"
+      "sha256": "1e029048c29e9b24fb5827888c774b63e6cef6a57b93241dc715d175e39f8cfa"
     },
     {
       "path": "branding/source/greyward-pdf-document.svg",
@@ -87,7 +87,7 @@
     },
     {
       "path": "packaging/greyward-office/automation/Containerfile",
-      "sha256": "479f1c1007d9ac6b64544c357f339796d2d289db3e156a0ca8427114eede64b4"
+      "sha256": "fd32eba447b3d75be124c306276656c78441699a782e737832e00a1756a2187b"
     },
     {
       "path": "packaging/greyward-office/automation/dnf-check.py",
@@ -143,7 +143,7 @@
     },
     {
       "path": "packaging/greyward-office/channel.json",
-      "sha256": "0ffe79d56ed08594baa6056959540e531656075958727ddb2f7e55b355855d3b"
+      "sha256": "6729164916acb4e2b23b80d56d07fcb20079c0ba0aaf5d2cc0ee48dbfb0f0b34"
     },
     {
       "path": "packaging/greyward-office/check-updates.py",
@@ -151,11 +151,11 @@
     },
     {
       "path": "packaging/greyward-office/greyward-office.repo.in",
-      "sha256": "6fd5c6673190a0cd890050d47fb142bb676b3cb2803bcdd83c6753860a54c276"
+      "sha256": "1d108f408771377bb0576062ca261e1546a985a0b88d299901d765a5155f1a0b"
     },
     {
       "path": "packaging/greyward-office/keys/RPM-GPG-KEY-greyward-office.gpg",
-      "sha256": "4e637c435f8c733d02656b796b42ccf80ebeb596b527b718fc02007053790997"
+      "sha256": "d8e947e08b9752b0a14b11a431acbfe1701469aa4c8d3ae570eeb332affbde40"
     },
     {
       "path": "packaging/greyward-office/licenses/CC-BY-SA-4.0.txt",
@@ -211,7 +211,7 @@
     },
     {
       "path": "packaging/greyward-office/stage-channel.py",
-      "sha256": "38114a416e9a304d08d5b6f2392a577cc34e0fd40816b63f7deb6f67cefbc567"
+      "sha256": "5a2240415a94c48db07571ff26ff739725581a1a93cca54920b076e4c8ca9329"
     },
     {
       "path": "packaging/greyward-office/upstream.py",

@@ -9,7 +9,7 @@ targetRules = ["generic-api-key"]
 condition = "AND"
 paths = ['(^|/)packaging/greyward-office/channel\.json$']
 regexTarget = "secret"
-regexes = ['^4e637c435f8c733d02656b796b42ccf80ebeb596b527b718fc02007053790997$']
+regexes = ['^4e637c435f8c733d02656b796b42ccf80ebeb596b527b718fc02007053790997$', '^d8e947e08b9752b0a14b11a431acbfe1701469aa4c8d3ae570eeb332affbde40$']
 
 [[allowlists]]
 description = "Exact verified dependency fingerprints and deliberately fake classifier fixture"
