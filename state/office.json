@@ -1,18 +1,26 @@
 {
   "attemptCycle": 0,
   "attemptRun": "40584792859",
-  "completedCycle": -1,
-  "current": null,
+  "channelVerified": null,
+  "completedCycle": 0,
+  "current": "office-f44-x86_64-g9",
   "epoch": "2026-10-27T21:08:51Z",
-  "generations": [],
+  "generations": [
+    {
+      "generation": 9,
+      "inventorySha256": "f37bef5720ab6e1cf74f3554d47391b55c69a0a058fb0c824402800a545865b9",
+      "publishedAt": "2026-10-27T22:23:00Z",
+      "releaseId": 426011246,
+      "tag": "office-f44-x86_64-g9",
+      "tagCommit": "fcf2a3f52e84a2f2815f20faf743244f1e91e5c1"
+    }
+  ],
   "lastAttempt": "2026-10-27T21:12:26Z",
+  "lastVerifiedAt": "2026-10-27T22:23:00Z",
+  "metadataCommit": "f2de56b3e39a70a81615595e01df5c062123cff8",
   "nextGeneration": 10,
-  "pending": {
-    "createdAt": "2026-10-27T21:36:30Z",
-    "releaseId": 426011246,
-    "tag": "office-f44-x86_64-g9",
-    "tagCommit": "fcf2a3f52e84a2f2815f20faf743244f1e91e5c1"
-  },
+  "pending": null,
   "reservedGeneration": 9,
-  "schema": "greyward.office-automation-state/v1"
+  "schema": "greyward.office-automation-state/v1",
+  "sourceManifestSha256": "4051c38ad4c89e9d9cec299affbc3bae7b44ed6742e1bac3c7d6f88ff3f250d3"
 }

@@ -1,6 +1,6 @@
 {
   "schema": "greyward.office-sources/v1",
-  "rpmRelease": 8,
+  "rpmRelease": 9,
   "fedora": 44,
   "architecture": "x86_64",
   "toolchain": {
