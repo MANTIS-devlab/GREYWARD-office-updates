@@ -32,7 +32,7 @@ def validate_policy(policy):
                 'periodHours': 144, 'retryHours': 24, 'keepGenerations': 3,
                 'graceHours': 48, 'fedora': 44, 'architecture': 'x86_64'}
     if (set(policy) != set(expected) | {'enabled'} or type(policy.get('enabled')) is not bool
-            or any(policy.get(k) != v for k, v in expected.items())):
+            or any(policy.get(k) != v or type(policy.get(k)) is not type(v) for k, v in expected.items())):
         raise ValueError('Unreviewed automation policy')
 
 
@@ -54,10 +54,12 @@ def validate_state(state):
     ids = set()
     for item in state['generations']:
         match = TAG.fullmatch(item.get('tag', ''))
-        if (not match or item.get('generation') != int(match[1]) or item['tag'] in seen
+        if (not match or type(item.get('generation')) is not int or item.get('generation') != int(match[1]) or item['tag'] in seen
                 or type(item.get('releaseId')) is not int or item['releaseId'] < 1 or item['releaseId'] in ids
                 or not SHA.fullmatch(item.get('inventorySha256', ''))):
             raise ValueError('Invalid/duplicate owned generation')
+        if not re.fullmatch('[a-f0-9]{40}', item.get('tagCommit', '')):
+            raise ValueError('Generation tag must pin its original commit')
         instant(item['publishedAt'])
         if item.get('withdrawnAt'):
             instant(item['withdrawnAt'])
@@ -65,9 +67,14 @@ def validate_state(state):
         ids.add(item['releaseId'])
     if state.get('current') is not None and state['current'] not in seen:
         raise ValueError('Current generation is missing')
+    if state['generations'] and state.get('current') is None:
+        raise ValueError('Published generations need a current pointer')
+    if any(g['tag'] == state.get('current') and g.get('withdrawnAt') for g in state['generations']):
+        raise ValueError('Current generation cannot be withdrawn')
     if state.get('pending'):
         pending = state['pending']
-        if not TAG.fullmatch(pending.get('tag', '')) or type(pending.get('releaseId')) is not int:
+        if (not TAG.fullmatch(pending.get('tag', '')) or type(pending.get('releaseId')) is not int
+                or pending['releaseId'] < 1 or not re.fullmatch('[a-f0-9]{40}', pending.get('tagCommit', ''))):
             raise ValueError('Invalid pending draft')
         instant(pending['createdAt'])
     if type(state.get('nextGeneration')) is not int or state['nextGeneration'] < 1:
@@ -144,7 +151,7 @@ def cleanup_plan(policy, state, releases, now):
         # Missing release is a recoverable partially completed deletion.
         if remote and (remote['tag_name'] != g['tag'] or remote.get('draft')):
             raise ValueError('Remote release identity changed; refuse cleanup')
-        result.append({'releaseId': g['releaseId'], 'tag': g['tag'], 'releaseExists': remote is not None})
+        result.append({'releaseId': g['releaseId'], 'tag': g['tag'], 'tagCommit': g['tagCommit'], 'releaseExists': remote is not None})
     return result
 
 

@@ -5,6 +5,9 @@
 # Otherwise RPM's exported RUSTFLAGS override Cargo's bounded release profile
 # and the Writer native test can exceed the isolated 8 GiB builder's limit.
 %global build_rustflags %{build_rustflags} -Cdebuginfo=0 -Ccodegen-units=16
+# This profile deliberately emits no DWARF. Ship the runtime and full source
+# RPMs, not an empty debugsource subpackage; native tests below still run.
+%global debug_package %{nil}
 %global _binary_payload w6T2.zstdio
 %global _source_payload w6T2.zstdio
 

@@ -25,11 +25,8 @@ export PATH="/build/toolchain/bin:$PATH"
 python3 packaging/greyward-office/build.py --repo /build/repo --cache /build/cache \
     --output /build/output --target /build/target "$slug"
 python3 tests/fixtures/office-roundtrip.py --binaries /build/target/release --output /build/roundtrip --only "$slug"
-python3 packaging/greyward-office/automation/gui-check.py --binary "/build/target/release/$(python3 -c 'import json,sys; print(next(a["upstream"] for a in json.load(open("packaging/greyward-office/source.json"))["applications"] if a["slug"]==sys.argv[1]))' "$slug")" \
-    --output /build/gui.json
 cp /build/output/RPMS/x86_64/greyward-"$slug"-*.rpm /build/output/SRPMS/greyward-"$slug"-*.src.rpm /build/result/
 cp /build/roundtrip/results.json /build/result/"$slug"-engine.json
-cp /build/gui.json /build/result/"$slug"-gui.json
 rpm -qa --qf '%{NAME}-%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort > /build/result/"$slug"-builder-packages.txt
 cp -a /build/result/. /result/
 python3 - <<'PY'

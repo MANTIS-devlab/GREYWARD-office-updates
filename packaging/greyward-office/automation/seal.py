@@ -49,13 +49,23 @@ def validate_candidate(base, value):
 
 def recipe_files(repo):
     """Explicit public component closure; never copy host output, Git or secrets."""
-    paths = [p for p in (repo / 'packaging/greyward-office').rglob('*') if p.is_file()
-             and '__pycache__' not in p.parts and p.suffix != '.pyc']
+    office = ('artwork.py', 'build.py', 'build-all.py', 'channel.json', 'check-updates.py',
+              'source.json', 'stage-channel.py', 'greyward-office.repo.in', 'migrate-associations.py',
+              'office.spec.in', 'prepare.py', 'prepare-update.py', 'render-icons.py', 'repository.py',
+              'upstream.py', 'verify-inputs.py', 'licenses/CC-BY-SA-4.0.txt', 'licenses/README.md',
+              'keys/RPM-GPG-KEY-greyward-office.gpg', 'patches/wordcraft.patch', 'patches/gridcraft.patch',
+              'patches/pdfcraft.patch', 'patches/deckcraft.patch')
+    automation = ('Containerfile', 'bootstrap.py', 'candidate.py', 'ci-build.sh', 'dependency-policy.json',
+                  'dnf-check.py', 'github.py', 'gui-check.py', 'model.py', 'office-app.yml', 'policy.json',
+                  'release.py', 'seal.py', 'transfer.py', 'validation.yml', 'workflow.yml')
+    paths = [repo / 'packaging/greyward-office' / name for name in office]
+    paths += [repo / 'packaging/greyward-office/automation' / name for name in automation]
     paths += [repo / 'branding/source' / name for name in
               ['greyward-symbol.svg', 'greyward-wordmark.svg'] +
               ['greyward-' + slug + suffix + '.svg' for slug in SLUGS for suffix in ('', '-document')]]
     paths += [repo / name for name in ('tests/test_office_automation.py',
                                      'tests/test_office_upstream.py', 'tests/fixtures/office-roundtrip.py')]
+    paths.append(repo / 'LICENSE')
     for p in paths:
         if p.is_symlink() or not p.is_file():
             raise ValueError('Missing/unsafe recipe source: ' + str(p))
@@ -77,6 +87,22 @@ def verify_family(repo, rpms):
     inputs = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(inputs)
     inputs.verify_rpms(repo, rpms)
+    policy = json.loads((repo / 'packaging/greyward-office/automation/dependency-policy.json').read_text())
+    for rpm in rpms:
+        import subprocess
+        name = subprocess.check_output(['rpm', '-qp', '--qf', '%{NAME}', str(rpm)], text=True).strip()
+        records = json.loads(inputs.read_payload(rpm, 'usr/share/licenses/' + name + '/greyward-licenses/dependencies.json'))
+        check_dependencies(policy, records)
+
+
+def check_dependencies(policy, records):
+    if policy.get('schema') != 'greyward.office-dependency-policy/v1' or not isinstance(records, list) or not records:
+        raise ValueError('Dependency license inventory unavailable')
+    for record in records:
+        expression = record.get('license')
+        if expression in policy['allowedExpressions']: continue
+        if expression is None and record.get('source') is None and record.get('name') in policy['unlicensedWorkspace']: continue
+        raise ValueError('New/unknown dependency license requires review: ' + str(record.get('name')))
 
 
 def seal(repo, incoming, candidate, output):

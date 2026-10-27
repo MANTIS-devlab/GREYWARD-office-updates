@@ -251,7 +251,7 @@
   "integrationSources": {
     "packaging/greyward-office/prepare.py": "a1e1cc8c685a4f70a381e73e1c0c3eb15c9615e2e1a289d8153489ac6c336439",
     "packaging/greyward-office/build.py": "b54dc959f62361513be7cbe2122d6e609c74309c935a923ddaaa7a4b649caba5",
-    "packaging/greyward-office/office.spec.in": "3e8161a00260c5adcad66760079d7eadcc992591ce845c5dc3f2104021126928",
+    "packaging/greyward-office/office.spec.in": "c63eeb429af37fe975546b25cf5752ad5288a836e09cab0ffdbfd2e67a9a226e",
     "packaging/greyward-office/licenses/CC-BY-SA-4.0.txt": "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5",
     "packaging/greyward-office/artwork.py": "3a27ac82f6901f66671d51559a4db75f2fb0814488cbfb6d49fb8162e2fded05",
     "packaging/greyward-office/verify-inputs.py": "130836be977dfbf9b7d819aa2692a3ad2322d1c944b385c723bb15ef68595c75",

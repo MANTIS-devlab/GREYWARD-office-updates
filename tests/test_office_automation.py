@@ -58,7 +58,7 @@ class CadenceTests(unittest.TestCase):
 
 def generation(number, when='2026-01-01T00:00:00Z'):
     return {'generation': number, 'tag': f'office-f44-x86_64-g{number}', 'releaseId': number + 100,
-            'publishedAt': when, 'inventorySha256': str(number % 10) * 64}
+            'tagCommit': 'f' * 40, 'publishedAt': when, 'inventorySha256': str(number % 10) * 64}
 
 
 class RetentionTests(CadenceTests):
@@ -82,7 +82,7 @@ class RetentionTests(CadenceTests):
         releases.append({'id': 500, 'tag_name': '0.5.2-Sophon', 'draft': False})
         self.assertEqual(model.cleanup_plan(self.policy, state, releases, self.start + dt.timedelta(hours=47)), [])
         plan = model.cleanup_plan(self.policy, state, releases, self.start + dt.timedelta(hours=48))
-        self.assertEqual(plan, [{'releaseId': 101, 'tag': 'office-f44-x86_64-g1', 'releaseExists': True}])
+        self.assertEqual(plan, [{'releaseId': 101, 'tag': 'office-f44-x86_64-g1', 'tagCommit': 'f' * 40, 'releaseExists': True}])
 
     def test_release_identity_drift_fails_closed(self):
         state = self.populated(4)
@@ -181,6 +181,25 @@ class SealingTests(unittest.TestCase):
             candidate = copy.deepcopy(self.base); candidate['applications'][0][field] = 'b' * len(candidate['applications'][0][field])
             with self.subTest(field=field), self.assertRaises(ValueError): self.validate(self.base, candidate)
 
+    def test_unknown_or_missing_dependency_license_requires_review(self):
+        from seal import check_dependencies
+        policy=json.loads((AUTOMATION/'dependency-policy.json').read_text())
+        check_dependencies(policy,[{'name':'known','license':'MIT','source':'registry'}])
+        for value in ('Unknown-License',None):
+            with self.assertRaises(ValueError):check_dependencies(policy,[{'name':'new','license':value,'source':'registry'}])
+
+    def test_source_archive_cannot_overwrite_comparison_tree_or_install_git_metadata(self):
+        from candidate import extract_release
+        import tarfile,io
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            for i,name in enumerate(('release/../old/LICENSE','release/.git/config','other/file')):
+                archive=root/(str(i)+'.tar')
+                with tarfile.open(archive,'w') as out:
+                    info=tarfile.TarInfo(name);info.size=1;out.addfile(info,io.BytesIO(b'x'))
+                with self.assertRaises(ValueError):extract_release(archive,root/('extract-'+str(i)),'release')
+            self.assertFalse((root/'old').exists())
+
     def test_public_component_has_closed_hash_inventory_and_no_python_cache(self):
         from bootstrap import export
         with tempfile.TemporaryDirectory() as temporary:
@@ -194,6 +213,23 @@ class SealingTests(unittest.TestCase):
             self.assertFalse((target / '.git').exists())
             self.assertFalse((target / 'output').exists())
             self.assertFalse(json.loads((target / 'packaging/greyward-office/automation/policy.json').read_text())['enabled'])
+
+    def test_export_excludes_unrelated_development_files_and_preserves_originals(self):
+        from bootstrap import export
+        from seal import recipe_files
+        import shutil
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); source = root / 'source'
+            for p in recipe_files(ROOT):
+                target = source / p.relative_to(ROOT);target.parent.mkdir(parents=True, exist_ok=True);shutil.copyfile(p,target)
+            private = source / 'packaging/greyward-office/keys/private-development.key'
+            private.write_text('Deliberately fake private-development sentinel')
+            extra = source / 'packaging/greyward-office/automation/unrelated-development.txt'
+            extra.write_text('Keep the private original')
+            output = root / 'public';export(source,output)
+            self.assertTrue(private.exists());self.assertTrue(extra.exists())
+            self.assertFalse((output / private.relative_to(source)).exists())
+            self.assertFalse((output / extra.relative_to(source)).exists())
 
 
 class TransportTests(unittest.TestCase):
@@ -234,13 +270,34 @@ class OrchestrationTests(unittest.TestCase):
         _, state, _ = self.state(); state['generations'][0]['releaseId'] = state['generations'][1]['releaseId']
         with self.assertRaises(ValueError): model.validate_state(state)
 
+    def test_missing_current_pointer_and_withdrawn_current_are_invalid(self):
+        _,state,_=self.state()
+        broken=copy.deepcopy(state);broken['current']=None
+        with self.assertRaises(ValueError):model.validate_state(broken)
+        state['generations'][-1]['withdrawnAt']='2026-01-01T00:00:00Z'
+        with self.assertRaises(ValueError):model.validate_state(state)
+
+    def test_moved_or_missing_tag_is_not_blindly_deleted(self):
+        import release
+        class Missing:
+            def request(self,*args,**kwargs):return None
+        release.delete_owned_tag(Missing(),'office-f44-x86_64-g1','f'*40)
+        class Moved:
+            def request(self,path,method='GET',**kwargs):
+                if method!='GET':raise AssertionError('No deletion of moved work')
+                return {'ref':'refs/tags/office-f44-x86_64-g1','object':{'type':'commit','sha':'a'*40}}
+        with self.assertRaises(ValueError):release.delete_owned_tag(Moved(),'office-f44-x86_64-g1','f'*40)
+
     def test_changed_pointer_and_disabled_policy_cannot_delete(self):
         import release
         policy, state, now = self.state()
         class Fake:
             def releases(self): return [{'id':101, 'tag_name':'office-f44-x86_64-g1', 'draft':False}]
             def content(self, path): return b'changed pointer'
-            def request(self, *args, **kwargs): raise AssertionError('No deletion permitted')
+            def request(self, path, method='GET', **kwargs):
+                if method=='GET' and path.startswith('/releases/'):
+                    n=int(path.rsplit('/',1)[1]);return {'id':n,'tag_name':'office-f44-x86_64-g'+str(n-100),'draft':False}
+                raise AssertionError('No deletion permitted')
         with self.assertRaises(ValueError): release.clean(Fake(), policy, state, now, True)
         policy['enabled'] = False
         with self.assertRaises(ValueError): release.clean(Fake(), policy, state, now, True)
@@ -251,12 +308,16 @@ class OrchestrationTests(unittest.TestCase):
         class Fake:
             def releases(self): return [{'id':101, 'tag_name':'office-f44-x86_64-g1', 'draft':False}, {'id':999,'tag_name':'OS-0.5.2'}]
             def content(self, path): return (release.snapshot_url(state['metadataCommit'],state['current'])+'\n').encode()
-            def request(self, path, method, **kwargs): events.append((method,path))
+            def request(self, path, method='GET', **kwargs):
+                if method=='GET' and path.startswith('/releases/'):
+                    n=int(path.rsplit('/',1)[1]);return {'id':n,'tag_name':'office-f44-x86_64-g'+str(n-100),'draft':False}
+                events.append((method,path))
+                if method=='GET':return {'ref':'refs/tags/office-f44-x86_64-g1','object':{'type':'commit','sha':'f'*40}}
             def commit(self, files, message): events.append(('COMMIT',json.loads(files[release.STATE])))
         result, _ = release.clean(Fake(), policy, state, now, True)
-        self.assertEqual(events[:2], [('DELETE','/releases/101'),('DELETE','/git/refs/tags/office-f44-x86_64-g1')])
+        self.assertEqual(events[:4], [('GET','/git/ref/tags/office-f44-x86_64-g1'),('DELETE','/releases/101'),('GET','/git/ref/tags/office-f44-x86_64-g1'),('DELETE','/git/refs/tags/office-f44-x86_64-g1')])
         self.assertEqual([g['generation'] for g in result['generations']], [2,3,4])
-        self.assertEqual(events[2][0], 'COMMIT')
+        self.assertEqual(events[4][0], 'COMMIT')
 
 
 if __name__ == '__main__': unittest.main()

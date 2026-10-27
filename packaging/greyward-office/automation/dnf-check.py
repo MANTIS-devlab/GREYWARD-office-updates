@@ -94,10 +94,19 @@ def check(repository, home, fingerprint, output, previous=None, remote=None):
     invalid = transaction('untrusted', negative.as_uri())
     if invalid.returncode == 0 or not any(word in (invalid.stdout + invalid.stderr).lower() for word in ('signature', 'public key', 'gpg', 'pgp')):
         raise ValueError('Untrusted package was not rejected for its signature')
+    tampered = output / 'tampered-metadata'
+    shutil.copytree(repository / 'repodata', tampered / 'repodata')
+    for rpm in repository.glob('*.x86_64.rpm'): shutil.copyfile(rpm, tampered / rpm.name)
+    (tampered / 'repodata/repomd.xml.asc').write_bytes(b'invalid detached signature\n')
+    bad_metadata = transaction('invalid-metadata', tampered.as_uri())
+    if bad_metadata.returncode == 0 or not any(word in (bad_metadata.stdout + bad_metadata.stderr).lower()
+                                             for word in ('signature', 'public key', 'gpg', 'pgp')):
+        raise ValueError('Invalid repository metadata signature was not explicitly rejected')
     if sorted(run(['rpm', '-qa']).splitlines()) != host_before:
         raise ValueError('Host package identities changed during disposable-root checks')
     evidence = {'real_dnf_transaction_test': True, 'operation': 'upgrade' if previous else 'initial-install',
-                'untrusted_rpm_rejected': True, 'host_unchanged': True, 'reference_reboot_test': False}
+                'untrusted_rpm_rejected': True, 'untrusted_metadata_rejected': True,
+                'host_unchanged': True, 'reference_reboot_test': False}
     (output / 'results.json').write_text(json.dumps(evidence, indent=2) + '\n')
     return evidence
 

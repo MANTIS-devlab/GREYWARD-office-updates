@@ -9,6 +9,8 @@ import re
 import subprocess
 import sys
 import tempfile
+import tarfile
+from pathlib import PurePosixPath
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from prepare import digest, extract, verified_file
@@ -66,6 +68,20 @@ def pinned_download(cache, repository, commit):
     return {'url': url, 'archive': filename, 'sha256': sha}, path
 
 
+def extract_release(archive, destination, root_name):
+    total = 0
+    with tarfile.open(archive) as bundle:
+        for count, member in enumerate(bundle, 1):
+            parts = PurePosixPath(member.name).parts
+            total += member.size
+            if (count > 100000 or total > 2 * 1024 ** 3 or not parts or parts[0] != root_name
+                    or any(p in ('..', '.git') for p in parts) or '\\' in member.name
+                    or not (member.isfile() or member.isdir())):
+                raise ValueError('Unsafe/unbounded upstream source archive')
+    destination.mkdir(parents=True, exist_ok=False)
+    return extract(archive, destination, root_name)
+
+
 def adapt(app, old_tree, tree, patch):
     if digest(tree / 'NOTICE') != app['noticeSha256']:
         raise ValueError('NOTICE changed; attribution review required')
@@ -119,8 +135,8 @@ def prepare_family(repo, cache, output, bootstrap=False, generation=None):
         with tempfile.TemporaryDirectory(prefix='office-compatible-') as scratch:
             scratch = Path(scratch)
             old_archive = verified_file(cache, app, app['archive'])
-            old_tree = extract(old_archive, scratch, app['upstream'] + '-' + app['commit'])
-            tree = extract(archive, scratch, app['upstream'] + '-' + commit)
+            old_tree = extract_release(old_archive, scratch / 'old', app['upstream'] + '-' + app['commit'])
+            tree = extract_release(archive, scratch / 'new', app['upstream'] + '-' + commit)
             app['adaptedInputs'] = adapt(app, old_tree, tree, patch)
             app['cargoLockSha256'] = digest(tree / 'Cargo.lock')
             if app.get('fontsWorkflowSource'):

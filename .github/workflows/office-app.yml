@@ -36,6 +36,16 @@ jobs:
             --cap-drop=ALL --security-opt=no-new-privileges \
             -v "$PWD:/source:ro" -v "$PWD/candidate:/candidate:ro" -v "$PWD/result:/result" \
             office-tools bash /source/packaging/greyward-office/automation/ci-build.sh "$SLUG"
+          mkdir gui-result && chmod 0777 gui-result
+          rpm=$(find "$PWD/result" -maxdepth 1 -name '*.x86_64.rpm' -type f)
+          test -n "$rpm"
+          docker run --rm --network=none --memory=8g --memory-swap=8g --cpus=2 --user=1000:1000 \
+            --cap-drop=ALL --security-opt=no-new-privileges \
+            -v "$PWD:/source:ro" -v "$PWD/gui-result:/gui-result" \
+            office-tools dbus-run-session -- python3 /source/packaging/greyward-office/automation/gui-check.py \
+              --repo /source --rpm "/source/result/$(basename "$rpm")" --slug "$SLUG" \
+              --output "/gui-result/$SLUG-gui.json"
+          cp "gui-result/$SLUG-gui.json" result/
           python3 - "$SLUG" <<'PY'
           import sys
           from pathlib import Path

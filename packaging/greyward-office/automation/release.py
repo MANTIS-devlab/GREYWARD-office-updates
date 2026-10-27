@@ -50,11 +50,35 @@ def assert_current_channel(api, state):
         raise ValueError('Channel pointer changed; refuse deletion')
 
 
+def check_owned_tag(api, tag, expected):
+    if not TAG.fullmatch(tag): raise ValueError('Unowned tag')
+    value = api.request('/git/ref/tags/' + tag, missing=True)
+    if value is None: return False
+    if value.get('ref') != 'refs/tags/' + tag or not expected:
+        raise ValueError('Tag identity is not pinned')
+    obj = value['object']
+    for _ in range(5):
+        if obj['type'] != 'tag': break
+        obj = api.request('/git/tags/' + obj['sha'])['object']
+    if obj.get('type') != 'commit' or obj.get('sha') != expected:
+        raise ValueError('Owned tag moved; preserve unrecognized work')
+    return True
+
+
+def delete_owned_tag(api, tag, expected):
+    if check_owned_tag(api, tag, expected):
+        api.request('/git/refs/tags/' + tag, 'DELETE')
+
+
 def clean(api, policy, state, now, apply=False):
     validate_policy(policy)
     if apply and not policy['enabled']:
         raise ValueError('Cleanup policy is disabled')
-    releases = api.releases()
+    # Exact tracked IDs avoid a stale/paginated list mistaking a draft for gone.
+    ids = {g['releaseId'] for g in state['generations']}
+    if state.get('pending'): ids.add(state['pending']['releaseId'])
+    releases = [value for release_id in sorted(ids)
+                if (value := api.request('/releases/' + str(release_id), missing=True)) is not None]
     plan = cleanup_plan(policy, state, releases, now)
     pending = state.get('pending')
     if pending and (now - instant(pending['createdAt'])).total_seconds() >= policy['graceHours'] * 3600:
@@ -64,13 +88,14 @@ def clean(api, policy, state, now, apply=False):
         if pending['tag'] == state.get('current'):
             raise ValueError('Pending release is currently offered')
         plan.append({'releaseId': pending['releaseId'], 'tag': pending['tag'],
-                     'releaseExists': remote is not None, 'pending': True})
+                     'tagCommit': pending.get('tagCommit'), 'releaseExists': remote is not None, 'pending': True})
     if apply and plan:
         assert_current_channel(api, state)
         result = copy.deepcopy(state)
         for item in plan:
+            check_owned_tag(api, item['tag'], item.get('tagCommit'))
             if item['releaseExists']: api.request('/releases/' + str(item['releaseId']), 'DELETE')
-            api.request('/git/refs/tags/' + item['tag'], 'DELETE', missing=True)
+            delete_owned_tag(api, item['tag'], item.get('tagCommit'))
             if item.get('pending'): result['pending'] = None
             else: result['generations'] = [g for g in result['generations'] if g['tag'] != item['tag']]
         api.commit({STATE: encode(result)}, 'Expire verified obsolete Office generations')
@@ -90,7 +115,9 @@ def gate(repo, api, now, force=False, pilot=False):
     result['verify'] = result['reason'] == 'channel-unverified' and not pilot
     lock = json.loads((repo / 'packaging/greyward-office/source.json').read_text())
     result['bootstrap'] = initial or digest(repo / 'packaging/greyward-office/source.json') != state.get('sourceManifestSha256')
-    result['generation'] = max(lock['rpmRelease'] + (0 if initial else 1), state['nextGeneration'])
+    # Reserve after the reviewed baseline even on bootstrap: upstream discovery
+    # may find a newer app and require a bumped family before the first release.
+    result['generation'] = max(lock['rpmRelease'] + 1, state['nextGeneration'])
     if result['due'] and not pilot:
         state['lastAttempt'] = timestamp(now)
         state['nextGeneration'] = result['generation'] + 1
@@ -101,7 +128,7 @@ def gate(repo, api, now, force=False, pilot=False):
     if result['due']: check_certificate(repo, now)
     if result['verify']:
         last = state.get('lastVerificationAttempt')
-        if last and (now - instant(last)).total_seconds() < policy['retryHours'] * 3600:
+        if last and not force and (now - instant(last)).total_seconds() < policy['retryHours'] * 3600:
             result['verify'] = False
         else:
             state['lastVerificationAttempt'] = timestamp(now)
@@ -274,12 +301,12 @@ def publish(repo, api, incoming, candidate, output, home, now):
     if release and (not state.get('pending') or state['pending']['releaseId'] != release['id']):
         raise ValueError('Refuse to adopt an untracked existing release')
     if not release:
-        release = api.request('/releases', 'POST', {'tag_name': tag, 'target_commitish': 'main',
+        release = api.request('/releases', 'POST', {'tag_name': tag, 'target_commitish': os.environ['GITHUB_SHA'],
             'name': 'GREYWARD Office generation ' + str(lock['rpmRelease']), 'draft': True,
             'prerelease': True, 'make_latest': 'false',
             'body': 'Automated GREYWARD Office build, based on the ArtCraft projects. '
                     'Availability in Update Center is controlled by the signed channel, not this release page.'})
-        state['pending'] = {'tag': tag, 'releaseId': release['id'], 'createdAt': timestamp(now)}
+        state['pending'] = {'tag': tag, 'releaseId': release['id'], 'createdAt': timestamp(now), 'tagCommit': os.environ['GITHUB_SHA']}
         api.commit({STATE: encode(state)}, 'Track candidate Office release before uploads')
     files = [p for p in bundle.iterdir() if p.is_file()]
     upload(api, release, files)
@@ -293,6 +320,7 @@ def publish(repo, api, incoming, candidate, output, home, now):
     for p in files:
         api.download(f'https://github.com/{REPOSITORY}/releases/download/{tag}/{p.name}', output / ('readback-' + p.name), digest(p))
     generation = {'generation': lock['rpmRelease'], 'tag': tag, 'releaseId': release['id'],
+                  'tagCommit': os.environ['GITHUB_SHA'],
                   'publishedAt': timestamp(now), 'inventorySha256': digest(bundle / 'inventory.json')}
     result = promote(policy, state, generation, state['attemptCycle'], now)
     combined = output / 'channel'; combined.mkdir()
@@ -306,6 +334,7 @@ def publish(repo, api, incoming, candidate, output, home, now):
     url = snapshot_url(snapshot, tag)
     # Test anonymous GitHub metadata/redirects with real DNF before switching the pointer.
     native_test(local, home, fingerprint, output / 'dnf-remote', previous, url)
+    api.request('/releases/' + str(release['id']), 'PATCH', {'prerelease': False, 'make_latest': 'true'})
     result['metadataCommit'] = snapshot
     result['channelVerified'] = None
     result['lastVerifiedAt'] = timestamp(now)
@@ -315,9 +344,11 @@ def publish(repo, api, incoming, candidate, output, home, now):
     native_test(local, home, fingerprint, output / 'dnf-mirrorlist', previous,
                 f'https://raw.githubusercontent.com/{REPOSITORY}/main/' + POINTER)
     result['channelVerified'] = tag
-    api.commit({STATE: encode(result)}, 'Confirm native DNF discovery through the public channel')
+    channel_policy = json.loads((repo / 'packaging/greyward-office/channel.json').read_text())
+    channel_policy['published'] = True
+    api.commit({STATE: encode(result), 'packaging/greyward-office/channel.json': encode(channel_policy)},
+               'Confirm native DNF discovery through the public channel')
     assert_current_channel(api, result)
-    api.request('/releases/' + str(release['id']), 'PATCH', {'prerelease': False, 'make_latest': 'true'})
     return {'generation': tag, 'retained': [g['tag'] for g in active(result)],
             'cleanupAfterGrace': [g['tag'] for g in result['generations'] if g.get('withdrawnAt')]}
 
@@ -334,7 +365,10 @@ def verify_channel(repo, api, output, home):
     native_test(local, home, fingerprint, output / 'dnf-reverify', previous,
                 f'https://raw.githubusercontent.com/{REPOSITORY}/main/' + POINTER)
     state['channelVerified'] = state['current']
-    api.commit({STATE: encode(state)}, 'Recover interrupted Office channel verification')
+    channel_policy = json.loads((repo / 'packaging/greyward-office/channel.json').read_text())
+    channel_policy['published'] = True
+    api.commit({STATE: encode(state), 'packaging/greyward-office/channel.json': encode(channel_policy)},
+               'Recover interrupted Office channel verification')
     assert_current_channel(api, state)
     api.request('/releases/' + str(current['releaseId']), 'PATCH', {'prerelease': False, 'make_latest': 'true'})
     return {'verified': state['current']}

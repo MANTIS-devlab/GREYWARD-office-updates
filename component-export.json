@@ -7,7 +7,7 @@
     },
     {
       "path": ".github/workflows/office-app.yml",
-      "sha256": "0c658df6ac6d43576c8c4e27f4f9eb6c24e8eae2365af9c123b3da89c3cf9f92"
+      "sha256": "be18ad5f097ae538b2a2689a9e9475660fdde1367529b333c0ff351418e264ca"
     },
     {
       "path": ".github/workflows/office.yml",
@@ -79,35 +79,39 @@
     },
     {
       "path": "packaging/greyward-office/automation/candidate.py",
-      "sha256": "cc02a91e7f72ec25d912f94a9acb6c45eada51207f6ce35434b633cf1bec46d5"
+      "sha256": "46b14f99b1eef165dfee4217ecc3e78e2804f24a2ef659c17eec258eb124983e"
     },
     {
       "path": "packaging/greyward-office/automation/ci-build.sh",
-      "sha256": "b9a2acbc948d72547b81032775213fbd8b68d3d529e8db0661c8ab3a145c005d"
+      "sha256": "1f51ab63b09fe40c4330c4c5a92744ab6b1a7d17353a218eafc1dc514e07c807"
     },
     {
       "path": "packaging/greyward-office/automation/Containerfile",
-      "sha256": "fd32eba447b3d75be124c306276656c78441699a782e737832e00a1756a2187b"
+      "sha256": "8fa2a3d214d06f5af0438265f3fa5375257ae49463d99152a617002d7cd85408"
+    },
+    {
+      "path": "packaging/greyward-office/automation/dependency-policy.json",
+      "sha256": "7b5efbed25f1d6de2b0175c75f275409453e61a1c220d1a0f9c7240804783db7"
     },
     {
       "path": "packaging/greyward-office/automation/dnf-check.py",
-      "sha256": "7af6b7619f5480ecd2c99c377c57d21a7fedf77bb510c9f9d12aa039b2ac8a82"
+      "sha256": "53d3ea8624fc66ac273f8d60661e45e85bb0151b91819cd968aead4742d93370"
     },
     {
       "path": "packaging/greyward-office/automation/github.py",
-      "sha256": "05d59f4dfe9fdc59d5b4eeedf1553edef4205fc9f09420ba5e5cf119c4dccb78"
+      "sha256": "943a1f70602865aa18dac341d7411aa8e7013cdd77c6b619a5d27b49b1037f91"
     },
     {
       "path": "packaging/greyward-office/automation/gui-check.py",
-      "sha256": "cf830cfcfb18d21a6ab835f63ba917a71f5cbe20063c53e1484171cb2519d9fc"
+      "sha256": "bdbdf1cc636fb14eda8f334fcfe5d6e06d475614692660cfd959dcb39c5af3ab"
     },
     {
       "path": "packaging/greyward-office/automation/model.py",
-      "sha256": "c56a698c907cfde9d4dd039490020eec7ef1f2e92f717a50599ceef6bec19ff0"
+      "sha256": "18e994a32361374e031951295747c91dd328ac2bea464877504c6a987633be72"
     },
     {
       "path": "packaging/greyward-office/automation/office-app.yml",
-      "sha256": "0c658df6ac6d43576c8c4e27f4f9eb6c24e8eae2365af9c123b3da89c3cf9f92"
+      "sha256": "be18ad5f097ae538b2a2689a9e9475660fdde1367529b333c0ff351418e264ca"
     },
     {
       "path": "packaging/greyward-office/automation/policy.json",
@@ -115,15 +119,15 @@
     },
     {
       "path": "packaging/greyward-office/automation/release.py",
-      "sha256": "9888808509380e3dea5bed70fd914f2052785816cb353883eaeb3d90cd982c4f"
+      "sha256": "11d2a252901f7c5035fc44c941658b7fcb0d7c47615abe9ca12f6b5f7145eec7"
     },
     {
       "path": "packaging/greyward-office/automation/seal.py",
-      "sha256": "f288b39213d9ecd93773869b43faa83bdfab7b6c762c359ae0d1b11cb7cea1ba"
+      "sha256": "9bc1f5ae862caba5b54eccf2606b5a605523e097ea0423360fce337a3ef18049"
     },
     {
       "path": "packaging/greyward-office/automation/transfer.py",
-      "sha256": "3370ee9c0d1c07b6b37c781826da5ea5869052ebf279e6e0d5571a247f78e999"
+      "sha256": "f992ace15804d57acd52266ddb98918beeed68d5232bcf75209b6040ca3a0bc3"
     },
     {
       "path": "packaging/greyward-office/automation/validation.yml",
@@ -171,7 +175,7 @@
     },
     {
       "path": "packaging/greyward-office/office.spec.in",
-      "sha256": "3e8161a00260c5adcad66760079d7eadcc992591ce845c5dc3f2104021126928"
+      "sha256": "c63eeb429af37fe975546b25cf5752ad5288a836e09cab0ffdbfd2e67a9a226e"
     },
     {
       "path": "packaging/greyward-office/patches/deckcraft.patch",
@@ -207,7 +211,7 @@
     },
     {
       "path": "packaging/greyward-office/source.json",
-      "sha256": "00c2c5b2531cefe3a46401abc1ad3fe38851de64dff56eff3889555c0af43e74"
+      "sha256": "0aa9f33ae97679b5bc5833dd5bdf304cb2176fdb640c791d80c3e1725f912b77"
     },
     {
       "path": "packaging/greyward-office/stage-channel.py",
@@ -239,7 +243,7 @@
     },
     {
       "path": "tests/test_office_automation.py",
-      "sha256": "be65fd2599618964186d7d3f257ca4d35b4e5c00ad637e923f4670610553d552"
+      "sha256": "06f1e09cd6016b0385eb696a76a8b81f78c8b42e02362ffe6b2f93b3b02c92fb"
     },
     {
       "path": "tests/test_office_upstream.py",

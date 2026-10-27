@@ -53,10 +53,10 @@ def stage(api, repo, incoming, candidate, slug, artifact_id, pilot=False):
         tag = 'office-f44-x86_64-g' + str(lock['rpmRelease'])
         release = next((r for r in api.releases() if r['tag_name'] == tag), None)
         if not release:
-            release = api.request('/releases', 'POST', {'tag_name': tag, 'target_commitish': 'main', 'draft': True,
+            release = api.request('/releases', 'POST', {'tag_name': tag, 'target_commitish': os.environ['GITHUB_SHA'], 'draft': True,
                 'prerelease': True, 'make_latest': 'false', 'name': 'GREYWARD Office generation ' + str(lock['rpmRelease']),
                 'body': 'Private staging; not an offered GREYWARD Office update.'})
-            state['pending'] = {'tag': tag, 'releaseId': release['id'], 'createdAt': timestamp(dt.datetime.now(UTC))}
+            state['pending'] = {'tag': tag, 'releaseId': release['id'], 'createdAt': timestamp(dt.datetime.now(UTC)), 'tagCommit': os.environ['GITHUB_SHA']}
             api.commit({STATE: encode(state)}, 'Track bounded Office staging draft')
         if not release['draft'] or not state.get('pending') or state['pending']['releaseId'] != release['id']:
             raise ValueError('Refuse to stage into an untracked/non-draft release')

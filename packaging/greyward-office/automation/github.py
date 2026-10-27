@@ -8,6 +8,7 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
+import time
 
 REPOSITORY = 'MANTIS-devlab/GREYWARD-office-updates'
 
@@ -27,8 +28,12 @@ class GitHub:
             raise ValueError('Invalid GitHub endpoint')
         domain = 'uploads.github.com' if upload else 'api.github.com'
         url = f'https://{domain}/repos/{REPOSITORY}' + suffix
+        if method == 'GET':
+            # Ledger/ref/release readback must not reuse a cached pre-mutation
+            # API response. Unknown query fields are ignored by GitHub itself.
+            url += ('&' if '?' in suffix else '?') + '_greyward_read=' + str(time.time_ns())
         headers = {'Accept': 'application/vnd.github+json', 'User-Agent': 'GREYWARD-Office-distribution',
-                   'X-GitHub-Api-Version': '2022-11-28'}
+                   'X-GitHub-Api-Version': '2022-11-28', 'Cache-Control': 'no-cache'}
         if self.token:
             headers['Authorization'] = 'Bearer ' + self.token
         if method != 'GET' and not self.token:
