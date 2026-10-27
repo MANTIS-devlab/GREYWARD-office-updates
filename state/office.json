@@ -1,10 +1,13 @@
 {
+  "attemptCycle": 0,
+  "attemptRun": "40584792859",
   "completedCycle": -1,
   "current": null,
   "epoch": "2026-10-27T21:08:51Z",
   "generations": [],
-  "lastAttempt": null,
-  "nextGeneration": 1,
+  "lastAttempt": "2026-10-27T21:12:26Z",
+  "nextGeneration": 10,
   "pending": null,
+  "reservedGeneration": 9,
   "schema": "greyward.office-automation-state/v1"
 }
