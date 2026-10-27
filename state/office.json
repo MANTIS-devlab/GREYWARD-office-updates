@@ -7,7 +7,12 @@
   "generations": [],
   "lastAttempt": "2026-10-27T21:12:26Z",
   "nextGeneration": 10,
-  "pending": null,
+  "pending": {
+    "createdAt": "2026-10-27T21:36:30Z",
+    "releaseId": 426011246,
+    "tag": "office-f44-x86_64-g9",
+    "tagCommit": "fcf2a3f52e84a2f2815f20faf743244f1e91e5c1"
+  },
   "reservedGeneration": 9,
   "schema": "greyward.office-automation-state/v1"
 }
