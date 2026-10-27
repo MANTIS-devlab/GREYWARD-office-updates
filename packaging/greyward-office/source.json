@@ -249,7 +249,7 @@
     "greyward-wordmark.svg": "3cc9f65e9e677dab5a4deb0cc86368fe46ab61195be5069713247cb77b2441a2"
   },
   "integrationSources": {
-    "packaging/greyward-office/prepare.py": "a1e1cc8c685a4f70a381e73e1c0c3eb15c9615e2e1a289d8153489ac6c336439",
+    "packaging/greyward-office/prepare.py": "2a840fa3b7d0ab2210a1deb1b5d37e55fdac9e298d684184de5e64d6186dea2d",
     "packaging/greyward-office/build.py": "b54dc959f62361513be7cbe2122d6e609c74309c935a923ddaaa7a4b649caba5",
     "packaging/greyward-office/office.spec.in": "cd5f1cb60b38fc1a376697494bbfa08fabf393e43600e6e2b8715ca8f3f8f94e",
     "packaging/greyward-office/licenses/CC-BY-SA-4.0.txt": "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5",

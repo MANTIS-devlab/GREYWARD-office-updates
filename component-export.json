@@ -199,7 +199,7 @@
     },
     {
       "path": "packaging/greyward-office/prepare.py",
-      "sha256": "a1e1cc8c685a4f70a381e73e1c0c3eb15c9615e2e1a289d8153489ac6c336439"
+      "sha256": "2a840fa3b7d0ab2210a1deb1b5d37e55fdac9e298d684184de5e64d6186dea2d"
     },
     {
       "path": "packaging/greyward-office/render-icons.py",
@@ -211,7 +211,7 @@
     },
     {
       "path": "packaging/greyward-office/source.json",
-      "sha256": "b6f6dd9201421b1a514f598b26bc37e98574eeec5b3bf74ed295856c8d548aac"
+      "sha256": "7191f958e4cbb32806ecdbffbcf78eb2f96978d6390114347229fc78c539cc83"
     },
     {
       "path": "packaging/greyward-office/stage-channel.py",
@@ -243,7 +243,7 @@
     },
     {
       "path": "tests/test_office_automation.py",
-      "sha256": "06f1e09cd6016b0385eb696a76a8b81f78c8b42e02362ffe6b2f93b3b02c92fb"
+      "sha256": "95895979091896d83845d59fdae8c64e5f0f21eeca76f4e934b832385918292a"
     },
     {
       "path": "tests/test_office_upstream.py",

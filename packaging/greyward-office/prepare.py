@@ -8,9 +8,22 @@ import shutil
 import subprocess
 import tarfile
 import tomllib
+import urllib.error
 import urllib.request
 
 from artwork import document_mime
+
+# Byte-identical mirrors of the two reviewed upstream OCR inputs. The original
+# attribution URLs/checksums remain unchanged. Never infer mirrors for another
+# resource or accept replacement model weights when an origin is unavailable.
+REVIEWED_INPUT_MIRRORS = {
+    ('https://ocrs-models.s3-accelerate.amazonaws.com/text-detection.rten',
+     'f15cfb56bd02c4bf478a20343986504a1f01e1665c2b3a0ad66340f054b1b5ca'):
+        ('https://github.com/deeplabua/deepocr/releases/download/models-v1/text-detection.rten',),
+    ('https://ocrs-models.s3-accelerate.amazonaws.com/text-recognition.rten',
+     'e484866d4cce403175bd8d00b128feb08ab42e208de30e42cd9889d8f1735a6e'):
+        ('https://github.com/deeplabua/deepocr/releases/download/models-v1/text-recognition.rten',),
+}
 
 
 def digest(path):
@@ -24,12 +37,27 @@ def verified_file(cache, item, filename):
         raise ValueError('Input must be a plain filename')
     if not path.exists():
         temporary = path.with_suffix(path.suffix + '.part')
-        with urllib.request.urlopen(item['url'], timeout=120) as remote, temporary.open('wb') as out:
-            shutil.copyfileobj(remote, out)
-        if digest(temporary) != item['sha256']:
-            temporary.unlink()
-            raise ValueError('Downloaded input digest mismatch: ' + filename)
-        temporary.rename(path)
+        urls = (item['url'], *REVIEWED_INPUT_MIRRORS.get((item['url'], item['sha256']), ()))
+        last_error = None
+        for url in urls:
+            try:
+                with urllib.request.urlopen(url, timeout=120) as remote, temporary.open('wb') as out:
+                    shutil.copyfileobj(remote, out)
+            except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
+                if isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                temporary.unlink(missing_ok=True)
+                last_error = error
+                continue
+            if digest(temporary) != item['sha256']:
+                temporary.unlink()
+                raise ValueError('Downloaded input digest mismatch: ' + filename)
+            temporary.rename(path)
+            if url != item['url']:
+                print('Verified byte-identical input mirror: ' + filename + ' from ' + url)
+            break
+        else:
+            raise RuntimeError('All reviewed input sources unavailable: ' + filename) from last_error
     if digest(path) != item['sha256']:
         raise ValueError('Input digest mismatch: ' + filename)
     return path

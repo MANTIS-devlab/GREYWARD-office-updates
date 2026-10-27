@@ -1,4 +1,5 @@
 import copy
+import io
 import datetime as dt
 import importlib.util
 import json
@@ -230,6 +231,57 @@ class SealingTests(unittest.TestCase):
             self.assertTrue(private.exists());self.assertTrue(extra.exists())
             self.assertFalse((output / private.relative_to(source)).exists())
             self.assertFalse((output / extra.relative_to(source)).exists())
+
+
+class InputDownloadTests(unittest.TestCase):
+    def check_download(self, responses, *, mirror=True, existing=None):
+        import candidate  # Loads the trusted sibling prepare module.
+        import prepare
+        payload = b'reviewed-input'
+        item = {'url': 'https://origin.invalid/model', 'sha256': hashlib.sha256(payload).hexdigest()}
+        mirrors = {(item['url'], item['sha256']): ('https://mirror.invalid/model',)} if mirror else {}
+        with tempfile.TemporaryDirectory() as directory:
+            cache = Path(directory)
+            if existing is not None: (cache / 'model').write_bytes(existing)
+            with patch.dict(prepare.REVIEWED_INPUT_MIRRORS, mirrors, clear=True), patch.object(
+                    prepare.urllib.request, 'urlopen', side_effect=responses) as request:
+                try:
+                    result = prepare.verified_file(cache, item, 'model').read_bytes()
+                except (ValueError, RuntimeError) as error:
+                    result = error
+                self.assertFalse((cache / 'model.part').exists())
+                return result, [c.args[0] for c in request.call_args_list]
+
+    def test_original_success_does_not_contact_mirror(self):
+        result, calls = self.check_download([io.BytesIO(b'reviewed-input')])
+        self.assertEqual(result, b'reviewed-input')
+        self.assertEqual(calls, ['https://origin.invalid/model'])
+
+    def test_unavailable_original_uses_only_reviewed_byte_identical_mirror(self):
+        result, calls = self.check_download([
+            urllib.error.HTTPError('https://origin.invalid/model', 403, 'Forbidden', {}, None),
+            io.BytesIO(b'reviewed-input')])
+        self.assertEqual(result, b'reviewed-input')
+        self.assertEqual(calls, ['https://origin.invalid/model', 'https://mirror.invalid/model'])
+
+    def test_bad_primary_digest_never_falls_back(self):
+        result, calls = self.check_download([io.BytesIO(b'wrong')])
+        self.assertIsInstance(result, ValueError)
+        self.assertEqual(len(calls), 1)
+
+    def test_bad_mirror_digest_is_rejected(self):
+        result, _ = self.check_download([urllib.error.URLError('Unavailable'), io.BytesIO(b'wrong')])
+        self.assertIsInstance(result, ValueError)
+
+    def test_unknown_input_never_infers_a_mirror(self):
+        result, calls = self.check_download([urllib.error.URLError('Unavailable')], mirror=False)
+        self.assertIsInstance(result, RuntimeError)
+        self.assertEqual(calls, ['https://origin.invalid/model'])
+
+    def test_corrupt_cache_is_rejected_without_network(self):
+        result, calls = self.check_download([], existing=b'wrong')
+        self.assertIsInstance(result, ValueError)
+        self.assertEqual(calls, [])
 
 
 class TransportTests(unittest.TestCase):
