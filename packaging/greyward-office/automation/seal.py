@@ -25,7 +25,7 @@ def validate_candidate(base, value):
             raise ValueError('Candidate changed trusted recipe: ' + key)
     if len(value['applications']) != 4:
         raise ValueError('Incomplete candidate family')
-    mutable = {'version', 'tag', 'commit', 'url', 'archive', 'sha256', 'cargoLockSha256', 'adaptedInputs', 'fontsWorkflowSource'}
+    mutable = {'version', 'tag', 'commit', 'url', 'archive', 'sha256', 'cargoLockSha256', 'adaptedInputs', 'fontsWorkflowSource', 'noticeSha256'}
     for old, new in zip(base['applications'], value['applications']):
         if set(old) != set(new) or any(old[k] != new[k] for k in old if k not in mutable):
             raise ValueError('Candidate changed reviewed identity/patch/resources')
@@ -40,7 +40,7 @@ def validate_candidate(base, value):
                 or new['url'] != f'https://codeload.github.com/storytold/{old["upstream"]}/tar.gz/{commit}'
                 or new['archive'] != old['upstream'] + '-' + commit + '.tar.gz'
                 or set(new['adaptedInputs']) != set(old['adaptedInputs'])
-                or not all(SHA.fullmatch(s) for s in [new['sha256'], new['cargoLockSha256'], *new['adaptedInputs'].values()])):
+                or not all(SHA.fullmatch(s) for s in [new['sha256'], new['cargoLockSha256'], new['noticeSha256'], *new['adaptedInputs'].values()])):
             raise ValueError('Candidate provenance/path drift')
         if new['version'] != old['version'] and new.get('fontsWorkflowSource'):
             if new['fontsWorkflowSource'].get('commit') != commit or not SHA.fullmatch(new['fontsWorkflowSource'].get('sha256', '')):
@@ -56,7 +56,7 @@ def recipe_files(repo):
               'keys/RPM-GPG-KEY-greyward-office.gpg', 'patches/wordcraft.patch', 'patches/gridcraft.patch',
               'patches/pdfcraft.patch', 'patches/deckcraft.patch')
     automation = ('Containerfile', 'bootstrap.py', 'candidate.py', 'ci-build.sh', 'dependency-policy.json',
-                  'dnf-check.py', 'github.py', 'gui-check.py', 'model.py', 'office-app.yml', 'policy.json',
+                  'dnf-check.py', 'github.py', 'gui-check.py', 'model.py', 'notice.py', 'office-app.yml', 'policy.json',
                   'release.py', 'seal.py', 'transfer.py', 'validation.yml', 'workflow.yml')
     paths = [repo / 'packaging/greyward-office' / name for name in office]
     paths += [repo / 'packaging/greyward-office/automation' / name for name in automation]

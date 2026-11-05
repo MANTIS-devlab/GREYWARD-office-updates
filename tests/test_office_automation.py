@@ -163,6 +163,111 @@ class CompatibilityTests(unittest.TestCase):
             self.assertIn('src/main.rs',adapt(app,old,new,patchfile))
 
 
+class NoticePolicyTests(unittest.TestCase):
+    HEADER = ('Writer\nCopyright (c) 2026 ArtCraft Team and contributors.\n'
+              'Licensed under MIT OR Apache-2.0.\n'
+              'ArtCraft trademarks are excluded; see docs/brand/LICENSE-brand.txt.\n\n'
+              'Third-party material\n\n')
+
+    def test_updated_credits_and_complete_license_notices_are_retained(self):
+        from notice import review_notice
+        old = (self.HEADER + 'Previous component credits.\n').encode()
+        new = (self.HEADER + 'Updated component credits.\nCopyright 2014 New Contributor\n'
+               'MIT License\nPermission is hereby granted ...\n').encode()
+        result = review_notice(old, new)
+        self.assertTrue(result['changed'])
+        self.assertEqual(result['newSha256'], hashlib.sha256(new).hexdigest())
+        self.assertEqual(result['oldSha256'], hashlib.sha256(old).hexdigest())
+
+    def test_year_formatting_and_line_endings_do_not_require_review(self):
+        from notice import review_notice
+        old = (self.HEADER + 'Credits\n').encode()
+        for text in (self.HEADER.replace('2026', '2026-2027'),
+                     self.HEADER.replace('under MIT', 'under\nMIT'),
+                     self.HEADER.replace('\n', '\r\n')):
+            with self.subTest(text=text):
+                self.assertTrue(review_notice(old, (text + 'Credits\n').encode())['changed'])
+
+    def test_first_party_terms_and_copyright_holders_still_require_review(self):
+        from notice import review_notice
+        old = (self.HEADER + 'Credits\n').encode()
+        for header in (self.HEADER.replace('MIT OR Apache-2.0', 'non-commercial only'),
+                       self.HEADER.replace('ArtCraft Team', 'Different owner'),
+                       self.HEADER.replace('are excluded', 'may not be redistributed'),
+                       self.HEADER.replace('Third-party material', 'New structure')):
+            with self.subTest(header=header), self.assertRaises(ValueError):
+                review_notice(old, (header + 'Credits\n').encode())
+
+    def test_missing_binary_and_unbounded_notices_are_rejected(self):
+        from notice import review_notice
+        old = (self.HEADER + 'Credits\n').encode()
+        for new in (b'', b'\xff', b'\x00NOTICE', b' ' * (256 * 1024 + 1), b'\n\t'):
+            with self.subTest(size=len(new)), self.assertRaises((ValueError, UnicodeError)):
+                review_notice(old, new)
+
+    def test_candidate_lock_pins_new_notice_and_retains_its_audit_diff(self):
+        import candidate
+        from contextlib import ExitStack
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); old, new = root / 'old', root / 'new'
+            original = CompatibilityTests.ORIGINAL
+            for tree in (old, new):
+                (tree / 'src').mkdir(parents=True)
+                (tree / '.github/workflows').mkdir(parents=True)
+                (tree / 'src/main.rs').write_bytes(original)
+                (tree / 'LICENSE').write_bytes(b'MIT\n')
+                (tree / 'NOTICE').write_text(self.HEADER + 'Old credits\n', encoding='utf-8')
+                (tree / 'Cargo.lock').write_text('lock')
+                (tree / '.github/workflows/release.yml').write_text('fonts: pin\n')
+            new_notice = (self.HEADER + 'New contributor credits\n').encode()
+            (new / 'NOTICE').write_bytes(new_notice)
+            office = root / 'packaging/greyward-office'; office.mkdir(parents=True)
+            (office / 'reviewed.patch').write_bytes(CompatibilityTests.PATCH)
+            app = {'slug': 'writer', 'upstream': 'wordcraft', 'version': '1.0.0',
+                   'commit': 'a' * 40, 'archive': 'old.tar.gz', 'patch': 'reviewed.patch',
+                   'noticeSha256': hashlib.sha256((old / 'NOTICE').read_bytes()).hexdigest(),
+                   'fontsCommit': 'pin', 'adaptedInputs': {'src/main.rs': 'unused'}}
+            manifest = {'applications': [app], 'rpmRelease': 9}
+            release = {'application': 'writer', 'tag': 'v1.1.0', 'version': '1.1.0'}
+            with ExitStack() as stack:
+                overrides = {'validate_sources': manifest,
+                             'discover': {'unavailable': False, 'applications': [release]},
+                             'request_json': {}, 'stable_release': release, 'resolve': 'b' * 40,
+                             'pinned_download': ({'archive': 'new.tar.gz', 'sha256': 'c' * 64}, root / 'new.tar.gz'),
+                             'verified_file': root / 'old.tar.gz'}
+                for name, value in overrides.items():
+                    stack.enter_context(patch.object(candidate, name, return_value=value))
+                stack.enter_context(patch.object(candidate, 'extract_release', side_effect=[old, new]))
+                decision = candidate.prepare_family(root, root / 'cache', root / 'output')
+            lock = json.loads((root / 'output/source.json').read_text())
+            self.assertEqual(lock['applications'][0]['noticeSha256'], hashlib.sha256(new_notice).hexdigest())
+            self.assertEqual((new / 'NOTICE').read_bytes(), new_notice)
+            self.assertEqual(decision['noticeUpdates'][0]['application'], 'writer')
+            self.assertIn('+New contributor credits', (root / 'output/notice-changes/writer.diff').read_text())
+            self.assertEqual(app['version'], '1.0.0')  # Active source lock stays unchanged.
+
+    def test_missing_recipe_dependency_is_not_silently_omitted(self):
+        from seal import recipe_files
+        self.assertIn(AUTOMATION / 'notice.py', recipe_files(ROOT))
+
+    def test_changed_brand_license_and_untrusted_old_notice_still_block(self):
+        from candidate import adapt
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); old, new = root / 'old', root / 'new'
+            for tree in (old, new):
+                (tree / 'docs/brand').mkdir(parents=True)
+                (tree / 'docs/brand/LICENSE-brand.txt').write_text('Reviewed brand terms')
+                (tree / 'LICENSE').write_text('MIT')
+                (tree / 'NOTICE').write_text(self.HEADER + 'Credits\n', encoding='utf-8')
+            app = {'noticeSha256': hashlib.sha256((old / 'NOTICE').read_bytes()).hexdigest()}
+            (new / 'docs/brand/LICENSE-brand.txt').write_text('Changed brand terms')
+            with self.assertRaisesRegex(ValueError, 'trademark license changed'):
+                adapt(app, old, new, root / 'unused.patch')
+            app['noticeSha256'] = '0' * 64
+            with self.assertRaisesRegex(ValueError, 'does not match its source lock'):
+                adapt(app, old, new, root / 'unused.patch')
+
+
 class SealingTests(unittest.TestCase):
     def setUp(self):
         from seal import validate_candidate
@@ -178,9 +283,19 @@ class SealingTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.validate(self.base, candidate)
 
     def test_equal_upstream_version_cannot_change_commit_or_inputs(self):
-        for field in ('commit', 'sha256', 'cargoLockSha256'):
+        for field in ('commit', 'sha256', 'cargoLockSha256', 'noticeSha256'):
             candidate = copy.deepcopy(self.base); candidate['applications'][0][field] = 'b' * len(candidate['applications'][0][field])
             with self.subTest(field=field), self.assertRaises(ValueError): self.validate(self.base, candidate)
+
+    def test_new_version_can_pin_a_new_notice_but_not_an_invalid_hash(self):
+        candidate = copy.deepcopy(self.base)
+        app = candidate['applications'][0]
+        app.update(version='99.0.0', tag='v99.0.0', noticeSha256='a' * 64)
+        if app.get('fontsWorkflowSource'):
+            app['fontsWorkflowSource']['commit'] = app['commit']
+        self.validate(self.base, candidate)
+        app['noticeSha256'] = 'invalid'
+        with self.assertRaises(ValueError): self.validate(self.base, candidate)
 
     def test_unknown_or_missing_dependency_license_requires_review(self):
         from seal import check_dependencies

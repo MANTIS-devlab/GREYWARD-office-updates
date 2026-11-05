@@ -2,8 +2,10 @@
 """Prepare a complete immutable family; exact compatibility, never fuzzy rebases."""
 import argparse
 import copy
+import difflib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -16,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from prepare import digest, extract, verified_file
 from upstream import discover, request_json, stable_release
 from model import exact_adaptations
+from notice import review_notice
 
 
 def validate_sources(repo):
@@ -83,12 +86,18 @@ def extract_release(archive, destination, root_name):
 
 
 def adapt(app, old_tree, tree, patch):
-    if digest(tree / 'NOTICE') != app['noticeSha256']:
-        raise ValueError('NOTICE changed; attribution review required')
+    if digest(old_tree / 'NOTICE') != app['noticeSha256']:
+        raise ValueError('Reviewed upstream NOTICE does not match its source lock')
+    review_notice((old_tree / 'NOTICE').read_bytes(), (tree / 'NOTICE').read_bytes())
     old_licenses = {p.name: digest(p) for p in old_tree.glob('LICENSE*') if p.is_file()}
     new_licenses = {p.name: digest(p) for p in tree.glob('LICENSE*') if p.is_file()}
     if not old_licenses or old_licenses != new_licenses:
         raise ValueError('Upstream license changed; review required')
+    brand_license = Path('docs/brand/LICENSE-brand.txt')
+    old_brand, new_brand = old_tree / brand_license, tree / brand_license
+    if (old_brand.exists() != new_brand.exists()
+            or old_brand.exists() and old_brand.read_bytes() != new_brand.read_bytes()):
+        raise ValueError('Upstream trademark license changed; review required')
     workflow = (tree / '.github/workflows/release.yml').read_text()
     if app['fontsCommit'] not in workflow:
         raise ValueError('Font resource changed; review required')
@@ -104,8 +113,12 @@ def adapt(app, old_tree, tree, patch):
     expected = exact_adaptations(patch.read_bytes(), original)
     hashes = {name: digest(tree / name) for name in original}
     git = ['git', '-c', 'core.autocrlf=false', '-c', 'core.eol=lf', 'apply']
-    subprocess.run([*git, '--check', str(patch.resolve())], cwd=tree, check=True)
-    subprocess.run([*git, str(patch.resolve())], cwd=tree, check=True)
+    # Source scratch directories may live inside the engineering checkout.
+    # Do not let git discover that parent repository and silently skip hunks
+    # relative to its prefix. No .git directory is created in upstream sources.
+    env = dict(os.environ, GIT_CEILING_DIRECTORIES=str(tree.resolve().parent))
+    subprocess.run([*git, '--check', str(patch.resolve())], cwd=tree, env=env, check=True)
+    subprocess.run([*git, str(patch.resolve())], cwd=tree, env=env, check=True)
     if any((tree / name).read_bytes() != expected[name] for name in original):
         raise ValueError('git apply differed from the unique exact transformations')
     return hashes
@@ -121,6 +134,7 @@ def prepare_family(repo, cache, output, bootstrap=False, generation=None):
     cache.mkdir(parents=True, exist_ok=True)
     result = copy.deepcopy(manifest)
     changed = []
+    notice_updates = []
     for app in result['applications']:
         release = next(r for r in report['applications'] if r['application'] == app['slug'])
         # Check published tag immutability even when no version changed.
@@ -138,6 +152,17 @@ def prepare_family(repo, cache, output, bootstrap=False, generation=None):
             old_tree = extract_release(old_archive, scratch / 'old', app['upstream'] + '-' + app['commit'])
             tree = extract_release(archive, scratch / 'new', app['upstream'] + '-' + commit)
             app['adaptedInputs'] = adapt(app, old_tree, tree, patch)
+            notice = review_notice((old_tree / 'NOTICE').read_bytes(), (tree / 'NOTICE').read_bytes())
+            app['noticeSha256'] = notice['newSha256']
+            if notice['changed']:
+                notice_updates.append(dict(application=app['slug'], **notice))
+                changes = output / 'notice-changes'
+                changes.mkdir(exist_ok=True)
+                diff = difflib.unified_diff(
+                    (old_tree / 'NOTICE').read_text(encoding='utf-8-sig').splitlines(True),
+                    (tree / 'NOTICE').read_text(encoding='utf-8-sig').splitlines(True),
+                    fromfile=app['slug'] + '/previous/NOTICE', tofile=app['slug'] + '/candidate/NOTICE')
+                (changes / (app['slug'] + '.diff')).write_text(''.join(diff), encoding='utf-8')
             app['cargoLockSha256'] = digest(tree / 'Cargo.lock')
             if app.get('fontsWorkflowSource'):
                 app['fontsWorkflowSource'] = {'commit': commit, 'sha256': digest(tree / '.github/workflows/release.yml')}
@@ -154,7 +179,7 @@ def prepare_family(repo, cache, output, bootstrap=False, generation=None):
     result.pop('candidateOnly', None)
     (output / 'source.json').write_text(json.dumps(result, indent=2) + '\n')
     decision = {'build': bool(changed) or bootstrap, 'changed': changed,
-                'generation': result['rpmRelease']}
+                'generation': result['rpmRelease'], 'noticeUpdates': notice_updates}
     (output / 'decision.json').write_text(json.dumps(decision, indent=2) + '\n')
     return decision
 
