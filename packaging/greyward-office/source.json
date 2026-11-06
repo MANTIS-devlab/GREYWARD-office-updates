@@ -294,12 +294,13 @@
   },
   "integrationSources": {
     "packaging/greyward-office/prepare.py": "a1db0b9455c8ca50af474ac34aa21cc4b662d365440f6d0f24207d2103ef3d2e",
-    "packaging/greyward-office/build.py": "d11e13846c6aeac4077b18400f934633f3c9dcd8d7a24a284016333bdca16d57",
+    "packaging/greyward-office/build.py": "e77fc920b09dc7b77bab1ffa2a435e26e27fd017af6dd7655dc988231585ffc7",
     "packaging/greyward-office/office.spec.in": "4171848496c1602d3678b50f24e4c8e318a9727e6e721a8420a0de2d5fb9d191",
     "packaging/greyward-office/licenses/CC-BY-SA-4.0.txt": "28a9529c7d0bb4dc51f4bf5c116a3d16ef247a052f7591466768ddf563fd1cf5",
     "packaging/greyward-office/artwork.py": "3a27ac82f6901f66671d51559a4db75f2fb0814488cbfb6d49fb8162e2fded05",
     "packaging/greyward-office/verify-inputs.py": "130836be977dfbf9b7d819aa2692a3ad2322d1c944b385c723bb15ef68595c75",
     "packaging/greyward-office/render-icons.py": "c9d80f131e14393a67a34e9c16b089b7e28a87658c8b27b4a465da30d190a7b7",
-    "packaging/greyward-office/resource_inputs.py": "050cc1aa04d7b1f66d75b2235b8d3f321339d072a6c3046c68d4fcbe5feb58b4"
+    "packaging/greyward-office/resource_inputs.py": "050cc1aa04d7b1f66d75b2235b8d3f321339d072a6c3046c68d4fcbe5feb58b4",
+    "packaging/greyward-office/vendor_inputs.py": "a9091cd09308f41a351f23e3a0889bebe89a10342202a2c9d2734611c9894507"
   }
 }

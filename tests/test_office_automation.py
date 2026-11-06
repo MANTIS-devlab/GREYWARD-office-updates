@@ -269,6 +269,48 @@ class NoticePolicyTests(unittest.TestCase):
                 adapt(app, old, new, root / 'unused.patch')
 
 
+class VendorInputTests(unittest.TestCase):
+    def fixture(self, root):
+        revision = 'a' * 40
+        manifest = ('[package]\nname="example"\nversion="1.0.0"\n'
+                    '[patch.crates-io]\nunused_ui = { git = "https://github.com/storytold/egui.git", rev = "' + revision + '" }\n')
+        lock = ('version = 4\n[[package]]\nname="example"\nversion="1.0.0"\n'
+                '[[patch.unused]]\nname="unused_ui"\nversion="0.37.0"\n'
+                'source="git+https://github.com/storytold/egui.git?rev=' + revision + '#' + revision + '"\n')
+        (root / 'Cargo.toml').write_text(manifest)
+        (root / 'Cargo.lock').write_text(lock)
+        return manifest, lock
+
+    def test_pruning_retains_upstream_inputs_and_active_dependency_graph(self):
+        import tomllib
+        from vendor_inputs import prune_unused
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); manifest, lock = self.fixture(root)
+            before_manifest = (root / 'Cargo.toml').read_bytes()
+            before_lock = (root / 'Cargo.lock').read_bytes()
+            result = prune_unused(root)
+            self.assertEqual([x['name'] for x in result['removed']], ['unused_ui'])
+            self.assertEqual(tomllib.loads((root / 'Cargo.lock').read_text())['package'], tomllib.loads(lock)['package'])
+            self.assertEqual((root / 'greyward-cargo-upstream/Cargo.toml').read_bytes(), before_manifest)
+            self.assertEqual((root / 'greyward-cargo-upstream/Cargo.lock').read_bytes(), before_lock)
+            self.assertEqual(prune_unused(root), {'removed': []})
+
+    def test_active_or_unpinned_patches_cannot_be_removed(self):
+        from vendor_inputs import prune_unused
+        for change in ('active', 'source'):
+            with self.subTest(change=change), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary); self.fixture(root)
+                lock = root / 'Cargo.lock'
+                if change == 'active':
+                    lock.write_text(lock.read_text().replace('[[package]]\nname="example"', '[[package]]\nname="unused_ui"'))
+                else:
+                    lock.write_text(lock.read_text().replace('?rev=' + 'a' * 40, '?rev=main'))
+                before = lock.read_bytes()
+                with self.assertRaises(ValueError): prune_unused(root)
+                self.assertEqual(lock.read_bytes(), before)
+                self.assertFalse((root / 'greyward-cargo-upstream').exists())
+
+
 class ResourceInputTests(unittest.TestCase):
     def test_only_official_immutable_data_repositories_are_accepted(self):
         from resource_inputs import validate_record

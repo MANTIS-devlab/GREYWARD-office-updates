@@ -71,7 +71,7 @@ def recipe_files(repo):
     office = ('artwork.py', 'build.py', 'build-all.py', 'channel.json', 'check-updates.py',
               'source.json', 'stage-channel.py', 'greyward-office.repo.in', 'migrate-associations.py',
               'office.spec.in', 'prepare.py', 'prepare-update.py', 'render-icons.py', 'repository.py',
-              'upstream.py', 'verify-inputs.py', 'resource_inputs.py', 'licenses/CC-BY-SA-4.0.txt', 'licenses/README.md',
+              'upstream.py', 'verify-inputs.py', 'resource_inputs.py', 'vendor_inputs.py', 'licenses/CC-BY-SA-4.0.txt', 'licenses/README.md',
               'keys/RPM-GPG-KEY-greyward-office.gpg', 'patches/wordcraft.patch', 'patches/gridcraft.patch',
               'patches/pdfcraft.patch', 'patches/deckcraft.patch')
     automation = ('Containerfile', 'bootstrap.py', 'candidate.py', 'ci-build.sh', 'dependency-policy.json',
