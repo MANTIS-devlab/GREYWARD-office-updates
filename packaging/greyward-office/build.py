@@ -50,10 +50,10 @@ def build(args):
     notices = tree / 'greyward-licenses'
     notices.mkdir()
     # Preserve bundled dependency/font notices alongside the application license.
-    for folder in (tree / 'greyward-vendor', tree / 'greyward-fonts', tree / 'assets', tree / 'crates'):
+    for folder in (tree / 'greyward-vendor', tree / 'greyward-fonts', tree / 'greyward-language', tree / 'assets', tree / 'crates'):
         for source in folder.rglob('*'):
             name = source.name.lower()
-            license_name = re.search(r'(^|[-_])(unlicense|license|licence|copying|copyright|notice|ofl)([._-]|$)', name)
+            license_name = re.search(r'(^|[-_])(unlicense|license|licence|copying|copyright|notice|ofl|attribution)([._-]|$)', name)
             if source.is_file() and license_name and source.suffix.lower() not in {'.rs', '.c', '.h', '.cpp', '.py', '.js', '.toml', '.json'}:
                 target = notices / source.relative_to(tree)
                 target.parent.mkdir(parents=True, exist_ok=True)

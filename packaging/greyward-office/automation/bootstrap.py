@@ -58,7 +58,10 @@ def export(repo, output):
         'The export inventory records the bootstrap snapshot; operational state and\n'
         'validated source locks subsequently evolve through the distribution workflow.\n'
         , newline='\n')
-    (output / '.gitattributes').write_text('* text=auto eol=lf\n', newline='\n')
+    (output / '.gitattributes').write_text(
+        '* text=auto eol=lf\n'
+        # Unified-diff context lines retain their required leading space.
+        'packaging/greyward-office/patches/*.patch whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab\n', newline='\n')
     (output / '.gitignore').write_text('__pycache__/\n*.pyc\ncandidate/\nincoming/\nresult/\n', newline='\n')
     inventory = [{'path': p.relative_to(output).as_posix(), 'sha256': hashlib.sha256(p.read_bytes()).hexdigest()}
                  for p in sorted(output.rglob('*')) if p.is_file()]

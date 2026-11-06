@@ -42,6 +42,10 @@ test "$(%{cargo} --version | cut -d' ' -f2)" = '@rustVersion@'
 export CARGO_BUILD_JOBS=2
 export CRAFT_FONTS_DIR="$PWD/greyward-fonts"
 export CRAFT_FONTS_REQUIRED=1
+if test -d "$PWD/greyward-language"; then
+  export CRAFT_I18N_DIR="$PWD/greyward-language"
+  export CRAFT_I18N_REQUIRED=1
+fi
 export @envPrefix@_BUILD_SHA='@commit@'
 %{cargo} build --release --locked --offline -p @upstream@ -p @upstream@-cli
 
@@ -96,6 +100,10 @@ printf '%s\n' 'GREYWARD @name@ is based on @upstream@ by the ArtCraft team.' \
 export CARGO_BUILD_JOBS=2
 export CRAFT_FONTS_DIR="$PWD/greyward-fonts"
 export CRAFT_FONTS_REQUIRED=1
+if test -d "$PWD/greyward-language"; then
+  export CRAFT_I18N_DIR="$PWD/greyward-language"
+  export CRAFT_I18N_REQUIRED=1
+fi
 export @envPrefix@_BUILD_SHA='@commit@'
 if test '@upstream@' = wordcraft; then
   %{cargo} test --release --locked --offline -p wordcraft-ui-egui interface_theme

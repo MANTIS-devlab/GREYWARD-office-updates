@@ -227,7 +227,7 @@ class NoticePolicyTests(unittest.TestCase):
                    'commit': 'a' * 40, 'archive': 'old.tar.gz', 'patch': 'reviewed.patch',
                    'noticeSha256': hashlib.sha256((old / 'NOTICE').read_bytes()).hexdigest(),
                    'fontsCommit': 'pin', 'adaptedInputs': {'src/main.rs': 'unused'}}
-            manifest = {'applications': [app], 'rpmRelease': 9}
+            manifest = {'applications': [app], 'rpmRelease': 9, 'fonts': [{'commit': 'pin'}]}
             release = {'application': 'writer', 'tag': 'v1.1.0', 'version': '1.1.0'}
             with ExitStack() as stack:
                 overrides = {'validate_sources': manifest,
@@ -237,6 +237,7 @@ class NoticePolicyTests(unittest.TestCase):
                              'verified_file': root / 'old.tar.gz'}
                 for name, value in overrides.items():
                     stack.enter_context(patch.object(candidate, name, return_value=value))
+                stack.enter_context(patch.object(candidate, 'refresh_data'))
                 stack.enter_context(patch.object(candidate, 'extract_release', side_effect=[old, new]))
                 decision = candidate.prepare_family(root, root / 'cache', root / 'output')
             lock = json.loads((root / 'output/source.json').read_text())
@@ -268,6 +269,61 @@ class NoticePolicyTests(unittest.TestCase):
                 adapt(app, old, new, root / 'unused.patch')
 
 
+class ResourceInputTests(unittest.TestCase):
+    def test_only_official_immutable_data_repositories_are_accepted(self):
+        from resource_inputs import validate_record
+        commit = 'a' * 40
+        record = {'commit': commit, 'file': 'craft-fonts-' + commit + '.tar.gz',
+                  'url': 'https://codeload.github.com/storytold/craft-fonts/tar.gz/' + commit,
+                  'sha256': 'b' * 64}
+        validate_record(record, 'craft-fonts')
+        for change in ({'commit': 'main'}, {'url': 'https://other.invalid/fonts'},
+                       {'file': '../fonts.tar.gz'}, {'sha256': 'invalid'}, {'extra': 'field'}):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                validate_record(dict(record, **change), 'craft-fonts')
+
+    def test_data_refs_are_read_without_running_upstream_workflows(self):
+        from resource_inputs import declared_fonts, declared_language
+        with tempfile.TemporaryDirectory() as temporary:
+            tree = Path(temporary); (tree / '.github/workflows').mkdir(parents=True)
+            workflow = tree / '.github/workflows/release.yml'
+            workflow.write_text('      craft-fonts-ref: ' + 'a' * 40 + '\n')
+            self.assertEqual(declared_fonts(tree), 'a' * 40)
+            self.assertIsNone(declared_language(tree))
+            (tree / 'craft-i18n.rev').write_text('b' * 40 + '\n')
+            self.assertEqual(declared_language(tree), 'b' * 40)
+            workflow.write_text(workflow.read_text() * 2)
+            with self.assertRaises(ValueError): declared_fonts(tree)
+
+    def test_font_contents_license_and_manifest_paths_are_checked(self):
+        from resource_inputs import validate_fonts
+        with tempfile.TemporaryDirectory() as temporary:
+            tree = Path(temporary); (tree / 'fonts').mkdir()
+            (tree / 'fonts/face.ttf').write_bytes(b'font bytes')
+            (tree / 'fonts/OFL.txt').write_text('Copyright Example\nSIL OPEN FONT LICENSE Version 1.1\n')
+            sha = hashlib.sha256(b'font bytes').hexdigest()
+            row = 'Example | Regular | fonts/face.ttf | Latn | OFL-1.1 | fonts/OFL.txt | ' + sha + ' | https://example.invalid\n'
+            manifest = tree / 'fonts/manifest.txt'; manifest.write_text(row)
+            self.assertEqual(validate_fonts(tree), 1)
+            for altered in (row.replace(sha, '0' * 64), row.replace('OFL-1.1', 'proprietary'),
+                            row.replace('fonts/face.ttf', '../face.ttf')):
+                manifest.write_text(altered)
+                with self.assertRaises(ValueError): validate_fonts(tree)
+
+    def test_catalog_branding_preserves_dictionary_and_license_bytes(self):
+        from resource_inputs import brand_catalogs
+        with tempfile.TemporaryDirectory() as temporary:
+            tree = Path(temporary); (tree / 'locales/fr').mkdir(parents=True)
+            catalog = tree / 'locales/fr/wordcraft.tsv'; catalog.write_text('About WordCraft\tA propos de WordCraft\n')
+            (tree / 'language-data').mkdir()
+            dictionary = tree / 'language-data/wordcraft.dic'; dictionary.write_bytes(b'WordCraft\n')
+            license_file = tree / 'LICENSE'; license_file.write_bytes(b'WordCraft copyright\n')
+            brand_catalogs(tree, 'WordCraft', 'Writer')
+            self.assertIn('Writer', catalog.read_text())
+            self.assertEqual(dictionary.read_bytes(), b'WordCraft\n')
+            self.assertEqual(license_file.read_bytes(), b'WordCraft copyright\n')
+
+
 class SealingTests(unittest.TestCase):
     def setUp(self):
         from seal import validate_candidate
@@ -296,6 +352,17 @@ class SealingTests(unittest.TestCase):
         self.validate(self.base, candidate)
         app['noticeSha256'] = 'invalid'
         with self.assertRaises(ValueError): self.validate(self.base, candidate)
+
+    def test_published_resource_bytes_cannot_be_redefined(self):
+        candidate = copy.deepcopy(self.base)
+        candidate['fonts'][0]['sha256'] = '0' * 64
+        with self.assertRaisesRegex(ValueError, 'immutable font'): self.validate(self.base, candidate)
+        candidate = copy.deepcopy(self.base)
+        app = candidate['applications'][0]
+        app.update(version='99.0.0', tag='v99.0.0')
+        app['fontsWorkflowSource']['commit'] = app['commit']
+        app['languageData']['sha256'] = '0' * 64
+        with self.assertRaisesRegex(ValueError, 'immutable language'): self.validate(self.base, candidate)
 
     def test_unknown_or_missing_dependency_license_requires_review(self):
         from seal import check_dependencies

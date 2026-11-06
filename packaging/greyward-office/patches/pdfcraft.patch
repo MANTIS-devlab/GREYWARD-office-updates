@@ -1,56 +1,121 @@
-diff --git a/apps/pdfcraft/src/main.rs b/apps/pdfcraft/src/main.rs
-index 96725cd..7694580 100644
---- a/apps/pdfcraft/src/main.rs
-+++ b/apps/pdfcraft/src/main.rs
-@@ -47,7 +47,7 @@ mod updates;
- mod windows_manifest;
+diff --git a/crates/ui-egui/src/app.rs b/crates/ui-egui/src/app.rs
+--- a/crates/ui-egui/src/app.rs
++++ b/crates/ui-egui/src/app.rs
+@@ -42,7 +42,7 @@
+         let mark = if dirty { " •" } else { "" };
+         let titled = |name: Option<String>| {
+             name.or_else(|| self.combine_showing().then(|| tl!("Combine files").to_owned()))
+-                .map_or_else(|| "PdfCraft".to_owned(), |name| format!("{name}{mark} — PdfCraft"))
++                .map_or_else(|| "PDF".to_owned(), |name| format!("{name}{mark} — PDF"))
+         };
+         let title = titled(self.active.and_then(|i| crate::canvas::tab_label(self, i)));
+         // The web page's title is what an embedding host reads to tell which file opened, so it
+diff --git a/crates/ui-egui/src/dialogs.rs b/crates/ui-egui/src/dialogs.rs
+--- a/crates/ui-egui/src/dialogs.rs
++++ b/crates/ui-egui/src/dialogs.rs
+@@ -1465,7 +1465,7 @@
+         ui.label(egui::RichText::new(tl!("Recover unsaved documents?")).font(theme::semibold(18.0)));
+     });
+     ui.add_space(6.0);
+-    ui.label(tl!("PdfCraft didn't shut down normally. These documents had changes that were autosaved:"));
++    ui.label(tl!("PDF didn't shut down normally. These documents had changes that were autosaved:"));
+     ui.add_space(8.0);
+     let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+     egui::Grid::new("recoverable").num_columns(2).spacing([18.0, 6.0]).show(ui, |ui| {
+@@ -1565,7 +1565,7 @@
+             ui.horizontal(|ui| {
+                 widgets::artcraft_mark(ui, 40.0);
+                 ui.vertical(|ui| {
+-                    ui.label(egui::RichText::new("PdfCraft").font(theme::semibold(20.0)));
++                    ui.label(egui::RichText::new("PDF").font(theme::semibold(20.0)));
+                     ui.label(crate::i18n::fmt(tl!("Version {v}"), &[("v", &pdfcraft_engine::build_info::version())]));
+                 });
+             });
+diff --git a/crates/ui-egui/src/home.rs b/crates/ui-egui/src/home.rs
+--- a/crates/ui-egui/src/home.rs
++++ b/crates/ui-egui/src/home.rs
+@@ -76,7 +76,7 @@
+     let t = Tokens::get(ui.ctx());
+     egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+         egui::Frame::NONE.inner_margin(egui::Margin { left: 36, right: 36, top: 28, bottom: 28 }).show(ui, |ui| {
+-            ui.label(egui::RichText::new(tl!("Welcome to PdfCraft")).font(theme::semibold(24.0)));
++            ui.label(egui::RichText::new(tl!("Welcome to PDF")).font(theme::semibold(24.0)));
+             ui.label(
+                 egui::RichText::new(tl!("An open-source PDF workbench — local, private, and scriptable."))
+                     .color(t.text_muted)
+@@ -202,7 +202,7 @@
+                 });
+                 ui.add_space(8.0);
+                 if app.recent.is_empty() {
+-                    ui.label(egui::RichText::new(tl!("Files you open in PdfCraft appear here. Drop a PDF anywhere to open it.")).color(t.text_muted));
++                    ui.label(egui::RichText::new(tl!("Files you open in PDF appear here. Drop a PDF anywhere to open it.")).color(t.text_muted));
+                 }
+             }
+             let mut open = None;
+@@ -269,7 +269,7 @@
+             ui.add_space(20.0);
+             widgets::section_title(ui, tl!("Privacy"));
+             ui.label(
+-                egui::RichText::new(tl!("PdfCraft works offline. No telemetry, no account, and no cloud processing unless you add a provider."))
++                egui::RichText::new(tl!("PDF works offline. No telemetry, no account, and no cloud processing unless you add a provider."))
+                     .color(t.text_muted),
+             );
+         });
+diff --git a/crates/ui-egui/src/menus.rs b/crates/ui-egui/src/menus.rs
+--- a/crates/ui-egui/src/menus.rs
++++ b/crates/ui-egui/src/menus.rs
+@@ -21,7 +21,7 @@
+ pub(super) mod tab_context;
  
- /// Freedesktop app id: the `.desktop` file name and the hicolor icon name.
--const APP_ID: &str = "ai.storyteller.pdfcraft";
-+const APP_ID: &str = "systems.mantis.greyward.PDF";
+ /// The app's name in the menus the layouts write (About, Hide, Quit).
+-pub(crate) const APP_NAME: &str = "PdfCraft";
++pub(crate) const APP_NAME: &str = "PDF";
  
- /// The app icon (assets/app-icon/README.md). macOS gets the version on Apple's icon grid, with a
- /// transparent margin; Windows and Linux get the full-bleed tile.
-@@ -275,7 +275,7 @@ fn main() -> eframe::Result {
-     let started = Rc::new(Cell::new(false));
-     let first = if choice == RendererChoice::Gl { eframe::Renderer::Glow } else { eframe::Renderer::Wgpu };
-     let result = eframe::run_native(
--        "PdfCraft",
-+        "PDF",
-         native_options(launch.integrated, launch.window_controls.is_some(), first),
-         app_creator(
-             launch.clone(),
-@@ -293,7 +293,7 @@ fn main() -> eframe::Result {
-             // usually still works there, so that's better than quitting.
-             log::error!("the GPU renderer (wgpu) didn't start: {e}. Starting with OpenGL instead; set PDFCRAFT_RENDERER=gl to skip wgpu.");
-             eframe::run_native(
--                "PdfCraft",
-+                "PDF",
-                 native_options(launch.integrated, launch.window_controls.is_some(), eframe::Renderer::Glow),
-                 app_creator(
-                     launch,
-@@ -336,7 +336,7 @@ fn retry_with_gl(choice: RendererChoice, app_started: bool) -> bool {
- /// The window and renderer settings for one run.
- fn native_options(integrated: bool, app_frame: bool, renderer: eframe::Renderer) -> eframe::NativeOptions {
-     let mut viewport = egui::ViewportBuilder::default()
--        .with_title("PdfCraft")
-+        .with_title("PDF")
-         .with_inner_size([1440.0, 920.0])
-         .with_min_inner_size([820.0, 520.0])
-         .with_drag_and_drop(true)
-@@ -416,7 +416,6 @@ fn app_creator<'a>(
-         {
-             app.motion.source = Some(motion::source());
-         }
--        app.update_source = Some(std::sync::Arc::new(updates::latest_release));
-         app.printer_source = Some(pdfcraft_ui_egui::system_printers());
-         app.os_key_store_ids = cfg!(any(target_os = "macos", target_os = "windows"));
-         #[cfg(target_os = "macos")]
-diff --git a/crates/ui-egui/src/canvas.rs b/crates/ui-egui/src/canvas.rs
-index c7015c4..9724c44 100644
---- a/crates/ui-egui/src/canvas.rs
-+++ b/crates/ui-egui/src/canvas.rs
-@@ -4698,7 +4698,7 @@ fn run_button(app: &mut PdfCraftApp, index: usize, name: &str, action: pdfcraft_
+ /// The top bar's width after the menus: the mode tabs, the search box and the buttons.
+ const ROW_AFTER_MENUS: f32 = 720.0;
+diff --git a/crates/ui-egui/src/widgets.rs b/crates/ui-egui/src/widgets.rs
+--- a/crates/ui-egui/src/widgets.rs
++++ b/crates/ui-egui/src/widgets.rs
+@@ -606,9 +606,9 @@
+ pub fn artcraft_logo(ui: &mut egui::Ui, height: f32) -> Response {
+     let dark = ui.visuals().dark_mode;
+     let (uri, bytes): (&str, &'static [u8]) = if dark {
+-        ("bytes://artcraft-logo-white.svg", include_bytes!("../../../docs/brand/artcraft-logo-white.svg"))
++        ("bytes://artcraft-logo-white.svg", include_bytes!("../../../greyward-branding/greyward-wordmark.svg"))
+     } else {
+-        ("bytes://artcraft-logo.svg", include_bytes!("../../../docs/brand/artcraft-logo.svg"))
++        ("bytes://artcraft-logo.svg", include_bytes!("../../../greyward-branding/greyward-wordmark.svg"))
+     };
+     ui.add(egui::Image::from_bytes(uri, bytes).max_height(height).alt_text("ArtCraft"))
+ }
+@@ -616,7 +616,7 @@
+ /// The ArtCraft mark (brand blue, works on light and dark), `size` points square.
+ pub fn artcraft_mark(ui: &mut egui::Ui, size: f32) -> Response {
+     ui.add(
+-        egui::Image::from_bytes("bytes://artcraft-mark.svg", include_bytes!("../../../docs/brand/artcraft-mark.svg"))
++        egui::Image::from_bytes("bytes://artcraft-mark.svg", include_bytes!("../../../greyward-branding/greyward-symbol.svg"))
+             .fit_to_exact_size(vec2(size, size))
+             .alt_text("ArtCraft"),
+     )
+diff --git a/crates/ui-egui/src/app/links.rs b/crates/ui-egui/src/app/links.rs
+--- a/crates/ui-egui/src/app/links.rs
++++ b/crates/ui-egui/src/app/links.rs
+@@ -105,9 +105,9 @@
+             Err(e) => {
+                 use pdfcraft_engine::links::BlockedLink;
+                 let template = if matches!(e, BlockedLink::MailFile | BlockedLink::MailEncodedWord) {
+-                    "{who} in this document tried to open an address PdfCraft won't open: {e}."
++                    "{who} in this document tried to open an address PDF won't open: {e}."
+                 } else {
+-                    "{who} in this document tried to open an address PdfCraft won't open: {e}. Only web (http, https) and email (mailto) links open from documents."
++                    "{who} in this document tried to open an address PDF won't open: {e}. Only web (http, https) and email (mailto) links open from documents."
+                 };
+                 self.notify_fmt(template, &[("who", tl!(origin.noun())), ("e", &e.to_string())]);
+             }
+diff --git a/crates/ui-egui/src/canvas/area.rs b/crates/ui-egui/src/canvas/area.rs
+--- a/crates/ui-egui/src/canvas/area.rs
++++ b/crates/ui-egui/src/canvas/area.rs
+@@ -111,7 +111,7 @@
          }
          B::Alert(m) => app.notify(m),
          B::Submit(url) => app.notify_fmt(
@@ -59,7 +124,10 @@ index c7015c4..9724c44 100644
              &[("name", name), ("url", &url)],
          ),
          B::ImportIcon => app.choose_field_image(name),
-@@ -4997,7 +4997,7 @@ fn notices(
+diff --git a/crates/ui-egui/src/canvas/bars.rs b/crates/ui-egui/src/canvas/bars.rs
+--- a/crates/ui-egui/src/canvas/bars.rs
++++ b/crates/ui-egui/src/canvas/bars.rs
+@@ -160,7 +160,7 @@
      } else if info.xfa == Some(pdfcraft_render::Xfa::Dynamic) {
          Some((
              "triangle-alert",
@@ -68,11 +136,224 @@ index c7015c4..9724c44 100644
              false,
          ))
      } else if info.xfa == Some(pdfcraft_render::Xfa::Static) {
-diff --git a/crates/ui-egui/src/content_ui.rs b/crates/ui-egui/src/content_ui.rs
-index ed4d062..2843acb 100644
---- a/crates/ui-egui/src/content_ui.rs
-+++ b/crates/ui-egui/src/content_ui.rs
-@@ -48,10 +48,10 @@ pub(crate) fn undrawable_message(c: char) -> String {
+diff --git a/crates/ui-egui/src/canvas/image_pick.rs b/crates/ui-egui/src/canvas/image_pick.rs
+--- a/crates/ui-egui/src/canvas/image_pick.rs
++++ b/crates/ui-egui/src/canvas/image_pick.rs
+@@ -82,7 +82,7 @@
+ pub(crate) fn safe_name(s: &str) -> String {
+     let cleaned: String = s.chars().map(|c| if c.is_control() || r#"/\:*?"<>|"#.contains(c) { '_' } else { c }).take(80).collect();
+     let cleaned = cleaned.trim().trim_matches('.').to_string();
+-    if cleaned.is_empty() { "PdfCraft".into() } else { cleaned }
++    if cleaned.is_empty() { "PDF".into() } else { cleaned }
+ }
+ 
+ /// The per-user folder that holds the file of the last Copy Image in Original Format: `Clipboard`
+@@ -99,9 +99,9 @@
+     }
+     let env = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from).filter(|p| p.is_absolute());
+     if cfg!(target_os = "macos") {
+-        env("HOME").map(|h| h.join("Library/Caches/PdfCraft/Clipboard"))
++        env("HOME").map(|h| h.join("Library/Caches/PDF/Clipboard"))
+     } else if cfg!(windows) {
+-        env("LOCALAPPDATA").map(|d| d.join("PdfCraft").join("Clipboard"))
++        env("LOCALAPPDATA").map(|d| d.join("PDF").join("Clipboard"))
+     } else {
+         env("XDG_CACHE_HOME").or_else(|| env("HOME").map(|h| h.join(".cache"))).map(|d| d.join("pdfcraft/clipboard"))
+     }
+@@ -244,7 +244,7 @@
+     #[test]
+     fn file_names_are_safe() {
+         assert_eq!(safe_name("a/b:c"), "a_b_c");
+-        assert_eq!(safe_name("  ..  "), "PdfCraft");
++        assert_eq!(safe_name("  ..  "), "PDF");
+         assert_eq!(safe_name("Relazione 2026"), "Relazione 2026");
+     }
+ 
+@@ -269,7 +269,7 @@
+         std::fs::write(dir.join("Old p1 img1.png"), b"old").unwrap();
+         let path = write_clipboard_file(&dir, "New p2 img1.jpg", b"new").unwrap();
+         assert_eq!(std::fs::read(&path).unwrap(), b"new");
+-        assert!(dir.join("keep.txt").exists(), "files PdfCraft didn't write are kept");
++        assert!(dir.join("keep.txt").exists(), "files PDF didn't write are kept");
+         assert!(!dir.join("Old p1 img1.png").exists(), "the previous copy is removed");
+         assert!(write_clipboard_file(&dir, "../escape p1 img1.png", b"x").is_err());
+         #[cfg(unix)]
+diff --git a/crates/ui-egui/src/dialogs/preferences.rs b/crates/ui-egui/src/dialogs/preferences.rs
+--- a/crates/ui-egui/src/dialogs/preferences.rs
++++ b/crates/ui-egui/src/dialogs/preferences.rs
+@@ -654,7 +654,7 @@
+     ui.add_space(6.0);
+ 
+     #[cfg(not(target_arch = "wasm32"))]
+-    ctx.checkbox(ui, &mut app.reopen_last_session, tl!("Reopen the files that were open when PdfCraft last closed"), t);
++    ctx.checkbox(ui, &mut app.reopen_last_session, tl!("Reopen the files that were open when PDF last closed"), t);
+     #[cfg(not(target_arch = "wasm32"))]
+     ctx.checkbox(ui, &mut app.restore_last_view, tl!("Restore the last view (page, zoom and page display) when a document is opened again"), t);
+     #[cfg(not(target_arch = "wasm32"))]
+diff --git a/crates/ui-egui/src/i18n/tests.rs b/crates/ui-egui/src/i18n/tests.rs
+--- a/crates/ui-egui/src/i18n/tests.rs
++++ b/crates/ui-egui/src/i18n/tests.rs
+@@ -229,11 +229,11 @@
+         return;
+     }
+     let listed: Vec<&str> = LANGUAGES.iter().map(|l| l.code).collect();
+-    assert_eq!(all, listed, "every language PdfCraft lists has its catalog in craft-i18n");
++    assert_eq!(all, listed, "every language PDF lists has its catalog in craft-i18n");
+     assert!(Lang::from_code("pseudo").is_none(), "the pseudo locale is never a setting");
+     // craft-i18n has catalogs PdfCraft doesn't offer (yet); they are never offered here.
+     for code in CRAFT_I18N.iter().map(|(c, ..)| *c).filter(|c| !listed.contains(c)) {
+-        assert_eq!(Lang::from_code(code), None, "{code} is not one of PdfCraft's languages");
++        assert_eq!(Lang::from_code(code), None, "{code} is not one of PDF's languages");
+     }
+ }
+ 
+@@ -620,7 +620,7 @@
+             (1..=6).map(|f| (f, fixture(f))).find(|(_, l)| trn(*l, 5, "{n} x", "{n} xs").starts_with('F')).expect("a form count loads");
+         if forms != pdfcraft_forms {
+             split.push((info.code, pdfcraft_forms, forms));
+-            assert_eq!(pdfcraft_forms, 1, "{}: PdfCraft listed {pdfcraft_forms} forms, CLDR {forms}", info.code);
++            assert_eq!(pdfcraft_forms, 1, "{}: PDF listed {pdfcraft_forms} forms, CLDR {forms}", info.code);
+             continue;
+         }
+         for n in plural_counts() {
+@@ -628,7 +628,7 @@
+         }
+     }
+     let codes: Vec<&str> = split.iter().map(|(c, ..)| *c).collect();
+-    assert_eq!(codes, ["tr", "hi"], "the languages CLDR gives more forms than PdfCraft had");
++    assert_eq!(codes, ["tr", "hi"], "the languages CLDR gives more forms than PDF had");
+     if !needs_catalogs() {
+         return;
+     }
+@@ -637,7 +637,7 @@
+         for (_, source, forms) in lang.catalog_texts().flat_map(rows).filter(|(c, ..)| c == "@plural") {
+             let distinct: std::collections::BTreeSet<&str> = forms.split('|').collect();
+             if distinct.len() > 1 {
+-                println!("{code}: {source:?} has forms that differ, so PdfCraft's single form is no longer the only text: {forms:?}");
++                println!("{code}: {source:?} has forms that differ, so PDF's single form is no longer the only text: {forms:?}");
+             }
+         }
+     }
+@@ -1284,7 +1284,7 @@
+     needs_catalogs!();
+     let ar = arabic();
+     assert_eq!(tr(ar, "Save as…"), "حفظ باسم…");
+-    assert_eq!(tr(ar, "About PdfCraft"), "حول PdfCraft");
++    assert_eq!(tr(ar, "About PDF"), "حول PDF");
+     assert_eq!(tr(ar, "Name:"), "الاسم:");
+     assert_eq!(tr(ar, "Issued by: "), "صادرة عن: ");
+     // Placeholders survive in their logical positions.
+@@ -1414,7 +1414,7 @@
+                 continue;
+             }
+             let Some(command) = pdfcraft_engine::commands::command(&id) else {
+-                out.push(format!("{}: @id {id:?} names a command PdfCraft doesn't have", lang.code()));
++                out.push(format!("{}: @id {id:?} names a command PDF doesn't have", lang.code()));
+                 continue;
+             };
+             if !same_shape(&translation, command.label) {
+diff --git a/crates/ui-egui/src/persist/recovery.rs b/crates/ui-egui/src/persist/recovery.rs
+--- a/crates/ui-egui/src/persist/recovery.rs
++++ b/crates/ui-egui/src/persist/recovery.rs
+@@ -173,9 +173,9 @@
+         }
+         let env = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from);
+         if cfg!(target_os = "macos") {
+-            env("HOME").map(|h| h.join("Library/Application Support/PdfCraft/Recovery"))
++            env("HOME").map(|h| h.join("Library/Application Support/PDF/Recovery"))
+         } else if cfg!(windows) {
+-            env("LOCALAPPDATA").map(|d| d.join("PdfCraft").join("Recovery"))
++            env("LOCALAPPDATA").map(|d| d.join("PDF").join("Recovery"))
+         } else {
+             env("XDG_DATA_HOME").or_else(|| env("HOME").map(|h| h.join(".local/share"))).map(|d| d.join("pdfcraft/recovery"))
+         }
+diff --git a/crates/ui-egui/src/platform/macos_association.rs b/crates/ui-egui/src/platform/macos_association.rs
+--- a/crates/ui-egui/src/platform/macos_association.rs
++++ b/crates/ui-egui/src/platform/macos_association.rs
+@@ -7,7 +7,7 @@
+ 
+ const OPEN_WITH: &str = "com.apple.LaunchServices.OpenWith";
+ const QUARANTINE: &str = "com.apple.quarantine";
+-const BUNDLE_ID: &str = "ai.storyteller.pdfcraft";
++const BUNDLE_ID: &str = "systems.mantis.greyward.PDF";
+ const MAX_ATTRIBUTE: usize = 64 * 1024;
+ 
+ /// A bounded snapshot used only to decide whether native association recovery is eligible.
+@@ -337,7 +337,7 @@
+     #[test]
+     fn untrusted_bundle_aliases_are_skipped_without_resolving_them() {
+         let dir = directory();
+-        let app = dir.join("PdfCraft.app");
++        let app = dir.join("PDF.app");
+         std::fs::create_dir(&app).unwrap();
+         let alias = dir.join("alias.app");
+         std::os::unix::fs::symlink(&app, &alias).unwrap();
+@@ -353,7 +353,7 @@
+         let hex = "62706c6973743030d30102030405065776657273696f6e54706174685f101062756e646c656964656e74696669657210005f101a2f4170706c69636174696f6e732f50646643726166742e6170705f101761692e73746f727974656c6c65722e7064666372616674080f171c2f314e0000000000000101000000000000000700000000000000000000000000000068";
+         let captured: Vec<u8> =
+             hex.as_bytes().as_chunks::<2>().0.iter().map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap()).collect();
+-        assert!(points_to_this_app(&captured, Path::new("/Applications/PdfCraft.app")));
++        assert!(points_to_this_app(&captured, Path::new("/Applications/PDF.app")));
+         let package = plist::from_bytes::<plist::Value>(include_bytes!("../../../../packaging/macos/Info.plist.in")).unwrap();
+         assert_eq!(package.as_dictionary().unwrap().get("CFBundleIdentifier").unwrap().as_string(), Some(BUNDLE_ID));
+     }
+@@ -361,7 +361,7 @@
+     /// Exercise arbitrary and damaged metadata through the strict native parser.
+     #[test]
+     fn malformed_plists_and_truncated_native_schemas_do_not_panic() {
+-        let app = Path::new("/Applications/PdfCraft.app");
++        let app = Path::new("/Applications/PDF.app");
+         for binary in [false, true] {
+             let native = binding(app, BUNDLE_ID, 0, binary);
+             for end in 0..native.len() {
+diff --git a/crates/ui-egui/src/platform/portable.rs b/crates/ui-egui/src/platform/portable.rs
+--- a/crates/ui-egui/src/platform/portable.rs
++++ b/crates/ui-egui/src/platform/portable.rs
+@@ -11,9 +11,9 @@
+ use std::sync::OnceLock;
+ 
+ /// Files beside the executable that switch on portable mode (either one; contents are ignored).
+-pub const MARKERS: [&str; 2] = ["portable.txt", "PdfCraft.portable"];
++pub const MARKERS: [&str; 2] = ["portable.txt", "PDF.portable"];
+ /// The data folder created beside the executable in portable mode.
+-pub const DATA_DIR: &str = "PdfCraftData";
++pub const DATA_DIR: &str = "PDFData";
+ 
+ /// The outcome of looking for a portable marker.
+ #[derive(Clone, Debug, Default, PartialEq, Eq)]
+@@ -132,7 +132,7 @@
+     #[test]
+     fn an_existing_data_folder_is_reused() {
+         let exe = temp("reuse");
+-        std::fs::write(exe.join("portable.txt"), b"PdfCraft portable mode").unwrap();
++        std::fs::write(exe.join("portable.txt"), b"PDF portable mode").unwrap();
+         std::fs::create_dir_all(exe.join(DATA_DIR)).unwrap();
+         std::fs::write(exe.join(DATA_DIR).join("app.ron"), b"()").unwrap();
+         assert_eq!(resolve(Some(&exe)).dir, Some(exe.join(DATA_DIR)));
+diff --git a/crates/ui-egui/src/platform/updates.rs b/crates/ui-egui/src/platform/updates.rs
+--- a/crates/ui-egui/src/platform/updates.rs
++++ b/crates/ui-egui/src/platform/updates.rs
+@@ -58,13 +58,10 @@
+     /// Help ▸ Check for updates: ask for the latest release and show the outcome.
+     pub fn check_for_updates(&mut self) {
+         #[cfg(not(target_arch = "wasm32"))]
++        if let Err(error) = std::process::Command::new("/usr/bin/greyward-security-center-route")
++            .arg("updates").spawn()
+         {
+-            self.updates.open = true;
+-            self.updates.check_requested = true;
+-        }
+-        #[cfg(target_arch = "wasm32")]
+-        {
+-            self.open_url(RELEASES_PAGE);
++            log::error!("Could not open GREYWARD Update Center: {error}");
+         }
+     }
+ 
+diff --git a/crates/ui-egui/src/tools/content_ui.rs b/crates/ui-egui/src/tools/content_ui.rs
+--- a/crates/ui-egui/src/tools/content_ui.rs
++++ b/crates/ui-egui/src/tools/content_ui.rs
+@@ -51,10 +51,10 @@
  pub(crate) fn undrawn_message(n: &pdfcraft_engine::TextNotice) -> String {
      let template = if n.redrawn_elsewhere {
          tl!(
@@ -85,139 +366,10 @@ index ed4d062..2843acb 100644
      };
      crate::i18n::fmt(template, &[("c", &n.ch.to_string()), ("code", &format!("U+{:04X}", u32::from(n.ch)))])
  }
-diff --git a/crates/ui-egui/src/dialogs.rs b/crates/ui-egui/src/dialogs.rs
-index a6f2477..4ba496e 100644
---- a/crates/ui-egui/src/dialogs.rs
-+++ b/crates/ui-egui/src/dialogs.rs
-@@ -1214,7 +1214,7 @@ fn dialogs(app: &mut PdfCraftApp, ctx: &egui::Context) {
-                     ui.label(egui::RichText::new(tl!("Recover unsaved documents?")).font(theme::semibold(18.0)));
-                 });
-                 ui.add_space(6.0);
--                ui.label(tl!("PdfCraft didn't shut down normally. These documents had changes that were autosaved:"));
-+                ui.label(tl!("PDF didn't shut down normally. These documents had changes that were autosaved:"));
-                 ui.add_space(8.0);
-                 let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
-                 egui::Grid::new("recoverable").num_columns(2).spacing([18.0, 6.0]).show(ui, |ui| {
-@@ -1305,7 +1305,7 @@ fn dialogs(app: &mut PdfCraftApp, ctx: &egui::Context) {
-                         ui.horizontal(|ui| {
-                             widgets::artcraft_mark(ui, 40.0);
-                             ui.vertical(|ui| {
--                                ui.label(egui::RichText::new("PdfCraft").font(theme::semibold(20.0)));
-+                                ui.label(egui::RichText::new("PDF").font(theme::semibold(20.0)));
-                                 ui.label(crate::i18n::fmt(tl!("Version {v}"), &[("v", &pdfcraft_engine::build_info::version())]));
-                             });
-                         });
-@@ -1320,7 +1320,7 @@ fn dialogs(app: &mut PdfCraftApp, ctx: &egui::Context) {
-                         );
-                         ui.add_space(12.0);
-                         ui.horizontal(|ui| {
--                            ui.label(egui::RichText::new(tl!("Part of")).color(t.text_muted));
-+                            ui.label(egui::RichText::new(tl!("GREYWARD integration")).color(t.text_muted));
-                             widgets::artcraft_logo(ui, 16.0);
-                         });
-                         ui.add_space(6.0);
-diff --git a/crates/ui-egui/src/fill_sign.rs b/crates/ui-egui/src/fill_sign.rs
-index 862b63e..10f5f34 100644
---- a/crates/ui-egui/src/fill_sign.rs
-+++ b/crates/ui-egui/src/fill_sign.rs
-@@ -885,7 +885,7 @@ fn scan_tab(
- ) -> bool {
-     ui.label(
-         egui::RichText::new(tl!(
--            "Sign a sheet of white paper and take a photo of it in bright, even light (use the flash). Choose the photo or drop it here: PdfCraft finds the signature and removes the paper."
-+            "Sign a sheet of white paper and take a photo of it in bright, even light (use the flash). Choose the photo or drop it here: PDF finds the signature and removes the paper."
-         ))
-         .color(t.text_muted),
-     );
-diff --git a/crates/ui-egui/src/home.rs b/crates/ui-egui/src/home.rs
-index 59b0a52..9c0b730 100644
---- a/crates/ui-egui/src/home.rs
-+++ b/crates/ui-egui/src/home.rs
-@@ -22,7 +22,7 @@ pub fn show(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
-     let t = Tokens::get(ui.ctx());
-     egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-         egui::Frame::NONE.inner_margin(egui::Margin { left: 36, right: 36, top: 28, bottom: 28 }).show(ui, |ui| {
--            ui.label(egui::RichText::new(tl!("Welcome to PdfCraft")).font(theme::semibold(24.0)));
-+            ui.label(egui::RichText::new(tl!("Welcome to PDF")).font(theme::semibold(24.0)));
-             ui.label(
-                 egui::RichText::new(tl!("An open-source PDF workbench — local, private, and scriptable."))
-                     .color(t.text_muted)
-@@ -149,7 +149,7 @@ pub fn show(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
-             });
-             ui.add_space(8.0);
-             if app.recent.is_empty() {
--                ui.label(egui::RichText::new(tl!("Files you open in PdfCraft appear here. Drop a PDF anywhere to open it.")).color(t.text_muted));
-+                ui.label(egui::RichText::new(tl!("Files you open in PDF appear here. Drop a PDF anywhere to open it.")).color(t.text_muted));
-             }
-             let mut open = None;
-             let mut remove = None;
-@@ -215,7 +215,7 @@ pub fn show(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
-             ui.add_space(20.0);
-             widgets::section_title(ui, tl!("Privacy"));
-             ui.label(
--                egui::RichText::new(tl!("PdfCraft works offline. No telemetry, no account, and no cloud processing unless you add a provider."))
-+                egui::RichText::new(tl!("PDF works offline. No telemetry, no account, and no cloud processing unless you add a provider."))
-                     .color(t.text_muted),
-             );
-         });
-diff --git a/crates/ui-egui/src/i18n/mod.rs b/crates/ui-egui/src/i18n/mod.rs
-index ab5e450..491baaf 100644
---- a/crates/ui-egui/src/i18n/mod.rs
-+++ b/crates/ui-egui/src/i18n/mod.rs
-@@ -1698,7 +1698,7 @@ mod tests {
-         // "حفظ باسم…" as typed; the ellipsis ends the phrase on the left.
-         assert_eq!(tr(ar, "Save as…"), "…باسم حفظ");
-         // Latin names keep their own direction inside the phrase.
--        assert_eq!(tr(ar, "About PdfCraft"), "PdfCraft حول");
-+        assert_eq!(tr(ar, "About PDF"), "PDF حول");
-         // A caption's colon stays beside the widget on its right.
-         assert_eq!(tr(ar, "Name:"), "الاسم:");
-         assert_eq!(tr(ar, "Issued by: "), "عن صادرة: ");
-diff --git a/crates/ui-egui/src/image_pick.rs b/crates/ui-egui/src/image_pick.rs
-index 403e983..1cc853e 100644
---- a/crates/ui-egui/src/image_pick.rs
-+++ b/crates/ui-egui/src/image_pick.rs
-@@ -74,7 +74,7 @@ pub(crate) fn paint(painter: &egui::Painter, xf: &PageXform, page: usize, info:
- fn safe_name(s: &str) -> String {
-     let cleaned: String = s.chars().map(|c| if c.is_control() || r#"/\:*?"<>|"#.contains(c) { '_' } else { c }).take(80).collect();
-     let cleaned = cleaned.trim().trim_matches('.').to_string();
--    if cleaned.is_empty() { "PdfCraft".into() } else { cleaned }
-+    if cleaned.is_empty() { "PDF".into() } else { cleaned }
- }
- 
- /// The per-user folder that holds the file of the last Copy Image in Original Format: `Clipboard`
-@@ -93,7 +93,7 @@ fn clipboard_dir() -> Option<std::path::PathBuf> {
-     if cfg!(target_os = "macos") {
-         env("HOME").map(|h| h.join("Library/Caches/PdfCraft/Clipboard"))
-     } else if cfg!(windows) {
--        env("LOCALAPPDATA").map(|d| d.join("PdfCraft").join("Clipboard"))
-+        env("LOCALAPPDATA").map(|d| d.join("PDF").join("Clipboard"))
-     } else {
-         env("XDG_CACHE_HOME").or_else(|| env("HOME").map(|h| h.join(".cache"))).map(|d| d.join("pdfcraft/clipboard"))
-     }
-@@ -234,7 +234,7 @@ mod tests {
-     #[test]
-     fn file_names_are_safe() {
-         assert_eq!(safe_name("a/b:c"), "a_b_c");
--        assert_eq!(safe_name("  ..  "), "PdfCraft");
-+        assert_eq!(safe_name("  ..  "), "PDF");
-         assert_eq!(safe_name("Relazione 2026"), "Relazione 2026");
-     }
- 
-@@ -259,7 +259,7 @@ mod tests {
-         std::fs::write(dir.join("Old p1 img1.png"), b"old").unwrap();
-         let path = write_clipboard_file(&dir, "New p2 img1.jpg", b"new").unwrap();
-         assert_eq!(std::fs::read(&path).unwrap(), b"new");
--        assert!(dir.join("keep.txt").exists(), "files PdfCraft didn't write are kept");
-+        assert!(dir.join("keep.txt").exists(), "files PDF didn't write are kept");
-         assert!(!dir.join("Old p1 img1.png").exists(), "the previous copy is removed");
-         assert!(write_clipboard_file(&dir, "../escape p1 img1.png", b"x").is_err());
-         #[cfg(unix)]
-diff --git a/crates/ui-egui/src/js_ui.rs b/crates/ui-egui/src/js_ui.rs
-index 4961129..e035225 100644
---- a/crates/ui-egui/src/js_ui.rs
-+++ b/crates/ui-egui/src/js_ui.rs
-@@ -63,7 +63,7 @@ impl PdfCraftApp {
+diff --git a/crates/ui-egui/src/workflows/js_ui.rs b/crates/ui-egui/src/workflows/js_ui.rs
+--- a/crates/ui-egui/src/workflows/js_ui.rs
++++ b/crates/ui-egui/src/workflows/js_ui.rs
+@@ -78,7 +78,7 @@
                  }
                  Request::LaunchUrl(u) => self.request_document_url(&u, crate::LinkOrigin::Script),
                  Request::Submit(u) => self.notify_fmt(
@@ -226,54 +378,10 @@ index 4961129..e035225 100644
                      &[("u", &u)],
                  ),
                  Request::SaveAs => self.run_command("file.save_as"),
-@@ -410,7 +410,7 @@ pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tok
-     ui.label(egui::RichText::new(tl!("For page sizes and margins.")).small().color(t.text_muted));
-     // The web build has no file paths to reopen.
-     #[cfg(not(target_arch = "wasm32"))]
--    ui.add(widgets::checkbox(&mut app.reopen_last_session, tl!("Reopen the files that were open when PdfCraft last closed")));
-+    ui.add(widgets::checkbox(&mut app.reopen_last_session, tl!("Reopen the files that were open when PDF last closed")));
-     // Acrobat's "Restore last view settings when reopening documents" (#1767).
-     #[cfg(not(target_arch = "wasm32"))]
-     ui.add(widgets::checkbox(&mut app.restore_last_view, tl!("Restore the last view (page, zoom and page display) when a document is opened again")));
-diff --git a/crates/ui-egui/src/lib.rs b/crates/ui-egui/src/lib.rs
-index 0300afd..109d9d6 100644
---- a/crates/ui-egui/src/lib.rs
-+++ b/crates/ui-egui/src/lib.rs
-@@ -1114,9 +1114,8 @@ impl PdfCraftApp {
-             space_hand: None,
-             full_screen_tool: None,
-             comment_prefs: Default::default(),
--            theme: ThemeKind::Light,
--            // A fresh install follows the desktop's appearance (#1248); saved settings override.
--            theme_preference: ThemePreference::System,
-+            theme: ThemeKind::Dark,
-+            theme_preference: ThemePreference::Dark,
-             reading_colors: Default::default(),
-             #[cfg(target_os = "linux")]
-             desktop_theme: None,
-@@ -2313,7 +2312,7 @@ impl PdfCraftApp {
-             Err(e) => {
-                 use pdfcraft_engine::links::BlockedLink;
-                 let template = if matches!(e, BlockedLink::MailFile | BlockedLink::MailEncodedWord) {
--                    "{who} in this document tried to open an address PdfCraft won't open: {e}."
-+                    "{who} in this document tried to open an address PDF won't open: {e}."
-                 } else {
-                     "{who} in this document tried to open an address PdfCraft won't open: {e}. Only web (http, https) and email (mailto) links open from documents."
-                 };
-@@ -3667,7 +3666,7 @@ impl eframe::App for PdfCraftApp {
-             .active
-             .and_then(|i| crate::canvas::tab_label(self, i))
-             .or_else(|| self.combine_showing().then(|| tl!("Combine files").to_owned()))
--            .map_or_else(|| "PdfCraft".to_owned(), |name| format!("{name} — PdfCraft"));
-+            .map_or_else(|| "PDF".to_owned(), |name| format!("{name} — PDF"));
-         if title != self.window_title {
-             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
-             self.window_title = title;
-diff --git a/crates/ui-egui/src/ocr_ui.rs b/crates/ui-egui/src/ocr_ui.rs
-index 977f90f..9a21271 100644
---- a/crates/ui-egui/src/ocr_ui.rs
-+++ b/crates/ui-egui/src/ocr_ui.rs
-@@ -148,7 +148,7 @@ pub(crate) fn body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> (boo
+diff --git a/crates/ui-egui/src/workflows/ocr_ui.rs b/crates/ui-egui/src/workflows/ocr_ui.rs
+--- a/crates/ui-egui/src/workflows/ocr_ui.rs
++++ b/crates/ui-egui/src/workflows/ocr_ui.rs
+@@ -148,7 +148,7 @@
      });
      if !available {
          ui.label(
@@ -282,37 +390,34 @@ index 977f90f..9a21271 100644
                  .small()
                  .color(t.text_muted),
          );
-diff --git a/crates/ui-egui/src/portable.rs b/crates/ui-egui/src/portable.rs
-index fefa268..5fc442f 100644
---- a/crates/ui-egui/src/portable.rs
-+++ b/crates/ui-egui/src/portable.rs
-@@ -132,7 +132,7 @@ mod tests {
-     #[test]
-     fn an_existing_data_folder_is_reused() {
-         let exe = temp("reuse");
--        std::fs::write(exe.join("portable.txt"), b"PdfCraft portable mode").unwrap();
-+        std::fs::write(exe.join("portable.txt"), b"PDF portable mode").unwrap();
-         std::fs::create_dir_all(exe.join(DATA_DIR)).unwrap();
-         std::fs::write(exe.join(DATA_DIR).join("app.ron"), b"()").unwrap();
-         assert_eq!(resolve(Some(&exe)).dir, Some(exe.join(DATA_DIR)));
-diff --git a/crates/ui-egui/src/recovery.rs b/crates/ui-egui/src/recovery.rs
-index 128e576..e62e466 100644
---- a/crates/ui-egui/src/recovery.rs
-+++ b/crates/ui-egui/src/recovery.rs
-@@ -175,7 +175,7 @@ impl RecoveryStore {
-         if cfg!(target_os = "macos") {
-             env("HOME").map(|h| h.join("Library/Application Support/PdfCraft/Recovery"))
-         } else if cfg!(windows) {
--            env("LOCALAPPDATA").map(|d| d.join("PdfCraft").join("Recovery"))
-+            env("LOCALAPPDATA").map(|d| d.join("PDF").join("Recovery"))
-         } else {
-             env("XDG_DATA_HOME").or_else(|| env("HOME").map(|h| h.join(".local/share"))).map(|d| d.join("pdfcraft/recovery"))
+diff --git a/crates/ui-egui/src/workflows/web_print.rs b/crates/ui-egui/src/workflows/web_print.rs
+--- a/crates/ui-egui/src/workflows/web_print.rs
++++ b/crates/ui-egui/src/workflows/web_print.rs
+@@ -128,7 +128,7 @@
+             html_sheets.push_str(&format!("<div class=\"s{k}\"><img alt=\"\" style=\"width:{w};height:{h}\" src=\"{src}\"></div>"));
          }
-diff --git a/crates/ui-egui/src/sign_ui.rs b/crates/ui-egui/src/sign_ui.rs
-index 6d09115..8f02f6a 100644
---- a/crates/ui-egui/src/sign_ui.rs
-+++ b/crates/ui-egui/src/sign_ui.rs
-@@ -1086,9 +1086,9 @@ fn sign_as(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tokens) -> bool {
+     }
+-    format!("<!doctype html><html><head><meta charset=\"utf-8\"><title>PdfCraft</title><style>{css}</style></head><body>{html_sheets}</body></html>")
++    format!("<!doctype html><html><head><meta charset=\"utf-8\"><title>PDF</title><style>{css}</style></head><body>{html_sheets}</body></html>")
+ }
+ 
+ /// A browser print being prepared: the print-ready PDF's sheets drawn one [`WebPrintJob::step`]
+diff --git a/crates/ui-egui/src/tools/fill_sign/scan.rs b/crates/ui-egui/src/tools/fill_sign/scan.rs
+--- a/crates/ui-egui/src/tools/fill_sign/scan.rs
++++ b/crates/ui-egui/src/tools/fill_sign/scan.rs
+@@ -210,7 +210,7 @@
+ ) -> bool {
+     ui.label(
+         egui::RichText::new(tl!(
+-            "Sign a sheet of white paper and take a photo of it in bright, even light (use the flash). Choose the photo or drop it here: PdfCraft finds the signature and removes the paper."
++            "Sign a sheet of white paper and take a photo of it in bright, even light (use the flash). Choose the photo or drop it here: PDF finds the signature and removes the paper."
+         ))
+         .color(t.text_muted),
+     );
+diff --git a/crates/ui-egui/src/tools/sign_ui/dialog.rs b/crates/ui-egui/src/tools/sign_ui/dialog.rs
+--- a/crates/ui-egui/src/tools/sign_ui/dialog.rs
++++ b/crates/ui-egui/src/tools/sign_ui/dialog.rs
+@@ -438,9 +438,9 @@
              ui.label("");
              ui.label(
                  egui::RichText::new(if entry.path.starts_with("windows:") {
@@ -324,146 +429,162 @@ index 6d09115..8f02f6a 100644
                  })
                  .small()
                  .color(t.text_muted),
-diff --git a/crates/ui-egui/src/theme.rs b/crates/ui-egui/src/theme.rs
-index 442cd6d..749d45d 100644
---- a/crates/ui-egui/src/theme.rs
-+++ b/crates/ui-egui/src/theme.rs
-@@ -97,24 +97,24 @@ impl Tokens {
-             },
-             ThemeKind::Dark => Self {
-                 kind,
--                titlebar: Color32::from_rgb(0x1B, 0x1B, 0x1E),
--                chrome: Color32::from_rgb(0x26, 0x26, 0x2A),
--                panel: Color32::from_rgb(0x26, 0x26, 0x2A),
-+                titlebar: Color32::from_rgb(0x0B, 0x0D, 0x10),
-+                chrome: Color32::from_rgb(0x12, 0x16, 0x1B),
-+                panel: Color32::from_rgb(0x12, 0x16, 0x1B),
-                 pasteboard: Color32::from_rgb(0x19, 0x19, 0x1C),
--                card: Color32::from_rgb(0x2E, 0x2E, 0x33),
--                border: Color32::from_rgb(0x3C, 0x3C, 0x43),
--                divider: Color32::from_rgb(0x33, 0x33, 0x39),
--                text: Color32::from_rgb(0xEC, 0xEC, 0xEF),
--                text_muted: Color32::from_rgb(0xAE, 0xAE, 0xB6),
-+                card: Color32::from_rgb(0x1B, 0x21, 0x28),
-+                border: Color32::from_rgb(0x34, 0x3B, 0x43),
-+                divider: Color32::from_rgb(0x34, 0x3B, 0x43),
-+                text: Color32::from_rgb(0xE6, 0xE9, 0xED),
-+                text_muted: Color32::from_rgb(0xAA, 0xB2, 0xBC),
-                 text_faint: Color32::from_rgb(0x97, 0x97, 0x9E),
--                icon: Color32::from_rgb(0xD4, 0xD4, 0xDA),
--                hover: Color32::from_rgb(0x34, 0x34, 0x3A),
--                pressed: Color32::from_rgb(0x3E, 0x3E, 0x45),
-+                icon: Color32::from_rgb(0xE6, 0xE9, 0xED),
-+                hover: Color32::from_rgb(0x24, 0x2C, 0x35),
-+                pressed: Color32::from_rgb(0x30, 0x3B, 0x46),
-                 selected: Color32::from_rgb(0x23, 0x3A, 0x63),
--                accent: Color32::from_rgb(0x4B, 0x8B, 0xF5),
--                accent_text: Color32::from_rgb(0x8C, 0xB6, 0xFA),
-+                accent: Color32::from_rgb(0xCF, 0x74, 0x7D),
-+                accent_text: Color32::from_rgb(0xCF, 0x74, 0x7D),
-                 accent_soft: Color32::from_rgb(0x24, 0x36, 0x57),
--                field: Color32::from_rgb(0x1E, 0x1E, 0x22),
-+                field: Color32::from_rgb(0x0B, 0x0D, 0x10),
-                 badge_new: Color32::from_rgb(0x3D, 0x7D, 0xEE),
-                 page_shadow: Color32::from_black_alpha(120),
-                 radius: 6,
-diff --git a/crates/ui-egui/src/updates.rs b/crates/ui-egui/src/updates.rs
-index 4e7957e..d8ff2d4 100644
---- a/crates/ui-egui/src/updates.rs
-+++ b/crates/ui-egui/src/updates.rs
-@@ -65,31 +65,12 @@ pub(crate) struct Updates {
- impl PdfCraftApp {
-     /// Help ▸ Check for updates: ask for the latest release and show the outcome.
-     pub fn check_for_updates(&mut self) {
--        let Some(source) = self.update_source.clone() else {
--            self.open_url(RELEASES_PAGE);
--            return;
--        };
-+        // Distribution packages are updated together by GREYWARD Update Center.
-         #[cfg(not(target_arch = "wasm32"))]
-+        if let Err(error) = std::process::Command::new("/usr/bin/greyward-security-center-route")
-+            .arg("updates").spawn()
+diff --git a/apps/pdfcraft/src/decorations.rs b/apps/pdfcraft/src/decorations.rs
+--- a/apps/pdfcraft/src/decorations.rs
++++ b/apps/pdfcraft/src/decorations.rs
+@@ -43,7 +43,7 @@
+     let Ok((globals, _queue)) = registry_queue_init::<Registry>(&conn) else { return false };
+     let offered = globals.contents().with_list(|list| list.iter().any(|g| g.interface == "zxdg_decoration_manager_v1"));
+     if !offered {
+-        log::info!("the Wayland compositor draws no window frames; PdfCraft draws its own title bar");
++        log::info!("the Wayland compositor draws no window frames; PDF draws its own title bar");
+     }
+     !offered
+ }
+diff --git a/apps/pdfcraft/src/main.rs b/apps/pdfcraft/src/main.rs
+--- a/apps/pdfcraft/src/main.rs
++++ b/apps/pdfcraft/src/main.rs
+@@ -49,7 +49,7 @@
+ mod windows_manifest;
+ 
+ /// Freedesktop app id: the `.desktop` file name and the hicolor icon name.
+-const APP_ID: &str = "ai.storyteller.pdfcraft";
++const APP_ID: &str = "systems.mantis.greyward.PDF";
+ 
+ /// The app icon (assets/app-icon/README.md). macOS gets the version on Apple's icon grid, with a
+ /// transparent margin; Windows and Linux get the full-bleed tile.
+@@ -92,7 +92,7 @@
+ /// it is `PdfCraftData` beside the executable (#157). XDG desktops use the configuration base;
+ /// other platforms retain eframe's PdfCraft folder. Logs and recovery stay in the data folder.
+ fn settings_dir() -> Option<std::path::PathBuf> {
+-    let legacy = eframe::storage_dir("PdfCraft");
++    let legacy = eframe::storage_dir("PDF");
+     match settings::directory(
+         cfg!(all(unix, not(target_os = "macos"))),
+         pdfcraft_ui_egui::portable::data_dir(),
+@@ -116,11 +116,11 @@
+     if pdfcraft_ui_egui::portable::data_dir().is_some() {
+         return;
+     }
+-    let mut moves = vec![(eframe::storage_dir("PrintCraft"), eframe::storage_dir("PdfCraft"))];
++    let mut moves = vec![(eframe::storage_dir("PrintCraft"), eframe::storage_dir("PDF"))];
+     // Recovery lives in the settings folder except on Windows, where it is under %LOCALAPPDATA%.
+     if cfg!(windows) {
+         let local = std::env::var_os("LOCALAPPDATA").filter(|v| !v.is_empty()).map(std::path::PathBuf::from);
+-        moves.push((local.as_ref().map(|d| d.join("PrintCraft")), local.map(|d| d.join("PdfCraft"))));
++        moves.push((local.as_ref().map(|d| d.join("PrintCraft")), local.map(|d| d.join("PDF"))));
+     }
+     for (old, new) in moves {
+         let (Some(old), Some(new)) = (old, new) else { continue };
+@@ -240,10 +240,10 @@
+     // no file behind) and after the PrintCraft migration (which a fresh folder would block).
+     // Records logged until now are written to it first.
+     if let (Some(logger), Some(dir)) =
+-        (logger, pdfcraft_ui_egui::portable::data_dir().map(std::path::Path::to_path_buf).or_else(|| eframe::storage_dir("PdfCraft")))
++        (logger, pdfcraft_ui_egui::portable::data_dir().map(std::path::Path::to_path_buf).or_else(|| eframe::storage_dir("PDF")))
+     {
+         match logger.attach_dir(&dir.join("logs")) {
+-            Ok(path) => log::info!("PdfCraft {}, log file {}", pdfcraft_engine::build_info::version(), path.display()),
++            Ok(path) => log::info!("PDF {}, log file {}", pdfcraft_engine::build_info::version(), path.display()),
+             // Standard error only by now (`attach_dir` gave up on the file); unlike `eprintln!`, never panics.
+             Err(e) => log::warn!("no log file: {e}"),
+         }
+@@ -270,7 +270,7 @@
+     let started = Rc::new(Cell::new(false));
+     let first = if choice == RendererChoice::Gl { eframe::Renderer::Glow } else { eframe::Renderer::Wgpu };
+     let result = eframe::run_native(
+-        "PdfCraft",
++        "PDF",
+         native_options(launch.integrated, launch.window_controls.is_some(), first),
+         app_creator(
+             launch.clone(),
+@@ -288,7 +288,7 @@
+             // usually still works there, so that's better than quitting.
+             log::error!("the GPU renderer (wgpu) didn't start: {e}. Starting with OpenGL instead; set PDFCRAFT_RENDERER=gl to skip wgpu.");
+             eframe::run_native(
+-                "PdfCraft",
++                "PDF",
+                 native_options(launch.integrated, launch.window_controls.is_some(), eframe::Renderer::Glow),
+                 app_creator(
+                     launch,
+@@ -331,7 +331,7 @@
+ /// The window and renderer settings for one run.
+ fn native_options(integrated: bool, app_frame: bool, renderer: eframe::Renderer) -> eframe::NativeOptions {
+     let mut viewport = egui::ViewportBuilder::default()
+-        .with_title("PdfCraft")
++        .with_title("PDF")
+         .with_inner_size([1440.0, 920.0])
+         .with_min_inner_size([820.0, 520.0])
+         .with_drag_and_drop(true)
+@@ -415,7 +415,7 @@
          {
--            self.updates.open = true;
--            if matches!(self.updates.check, Check::Running(_)) {
--                return;
--            }
--            let (tx, rx) = std::sync::mpsc::channel();
--            let ctx = self.ctx.clone();
--            std::thread::spawn(move || {
--                // The receiver may be gone (the app quit): nothing to report to then.
--                let _ = tx.send(source());
--                if let Some(ctx) = ctx {
--                    ctx.request_repaint();
--                }
--            });
--            self.updates.check = Check::Running(rx);
--        }
--        #[cfg(target_arch = "wasm32")]
--        {
--            let _ = source;
--            self.open_url(RELEASES_PAGE);
-+            log::error!("Could not open GREYWARD Update Center: {error}");
+             app.motion.source = Some(motion::source());
          }
+-        app.set_startup_update_check(true);
++        app.set_startup_update_check(false);
+         app.printer_source = Some(pdfcraft_ui_egui::system_printers());
+         app.os_key_store_ids = cfg!(any(target_os = "macos", target_os = "windows"));
+         #[cfg(target_os = "macos")]
+@@ -486,7 +486,7 @@
+ /// `unsafe` calls.
+ fn notify_software_renderer(app: &mut PdfCraftApp, device_type: eframe::wgpu::DeviceType) {
+     if device_type == eframe::wgpu::DeviceType::Cpu {
+-        app.notify_tr("PdfCraft is drawing without a graphics processor, so it may be slow. Updating the graphics driver may help.");
++        app.notify_tr("PDF is drawing without a graphics processor, so it may be slow. Updating the graphics driver may help.");
      }
+ }
  
-@@ -136,7 +117,7 @@ pub(crate) fn dialog(app: &mut PdfCraftApp, ctx: &egui::Context) {
-             }
-             Check::Done(Ok(r)) if is_newer(&r.version, current) => {
-                 let version = r.version.trim_start_matches(['v', 'V']);
--                ui.label(egui::RichText::new(crate::i18n::fmt(tl!("PdfCraft {v} is available."), &[("v", version)])).strong());
-+                ui.label(egui::RichText::new(crate::i18n::fmt(tl!("PDF {v} is available."), &[("v", version)])).strong());
-                 ui.label(
-                     egui::RichText::new(crate::i18n::fmt(
-                         tl!("You have version {c}. Download the new version from its release page."),
-@@ -147,7 +128,7 @@ pub(crate) fn dialog(app: &mut PdfCraftApp, ctx: &egui::Context) {
-                 download = Some(r.url.clone());
-             }
-             Check::Done(Ok(_)) => {
--                ui.label(crate::i18n::fmt(tl!("PdfCraft {c} is up to date."), &[("c", current)]));
-+                ui.label(crate::i18n::fmt(tl!("PDF {c} is up to date."), &[("c", current)]));
-             }
-             Check::Done(Err(e)) => {
-                 ui.label(crate::i18n::fmt(tl!("Couldn't check for updates: {e}"), &[("e", &e.to_string())]));
-diff --git a/crates/ui-egui/src/web_print.rs b/crates/ui-egui/src/web_print.rs
-index 6af878d..76af8c8 100644
---- a/crates/ui-egui/src/web_print.rs
-+++ b/crates/ui-egui/src/web_print.rs
-@@ -128,7 +128,7 @@ pub(crate) fn print_document_html(sheets: &[(f64, f64)], urls: &[String]) -> Str
-             html_sheets.push_str(&format!("<div class=\"s{k}\"><img alt=\"\" style=\"width:{w};height:{h}\" src=\"{src}\"></div>"));
+diff --git a/apps/pdfcraft/src/settings.rs b/apps/pdfcraft/src/settings.rs
+--- a/apps/pdfcraft/src/settings.rs
++++ b/apps/pdfcraft/src/settings.rs
+@@ -172,7 +172,7 @@
+     #[test]
+     fn portable_and_non_xdg_platforms_keep_their_locations() {
+         let f = Fixture::new();
+-        let portable = f.0.join("PdfCraftData");
++        let portable = f.0.join("PDFData");
+         for xdg in [true, false] {
+             assert_eq!(directory(xdg, Some(&portable), Some(f.0.clone()), Some(f.0.clone()), None).unwrap(), Some(portable.clone()));
          }
-     }
--    format!("<!doctype html><html><head><meta charset=\"utf-8\"><title>PdfCraft</title><style>{css}</style></head><body>{html_sheets}</body></html>")
-+    format!("<!doctype html><html><head><meta charset=\"utf-8\"><title>PDF</title><style>{css}</style></head><body>{html_sheets}</body></html>")
+diff --git a/apps/pdfcraft/src/single_instance.rs b/apps/pdfcraft/src/single_instance.rs
+--- a/apps/pdfcraft/src/single_instance.rs
++++ b/apps/pdfcraft/src/single_instance.rs
+@@ -159,7 +159,7 @@
+     // own name so it never hands files to an installed copy (which keeps its settings elsewhere).
+     // Never the portable folder itself: it may sit where other accounts can write (`C:\Tools`).
+     let name = if pdfcraft_ui_egui::portable::data_dir().is_some() { format!("portable-{name}") } else { name };
+-    std::env::var_os("LOCALAPPDATA").filter(|v| !v.is_empty()).map(|d| std::path::PathBuf::from(d).join("PdfCraft").join(name))
++    std::env::var_os("LOCALAPPDATA").filter(|v| !v.is_empty()).map(|d| std::path::PathBuf::from(d).join("PDF").join(name))
  }
  
- /// A browser print being prepared: the print-ready PDF's sheets drawn one [`WebPrintJob::step`]
-diff --git a/crates/ui-egui/src/widgets.rs b/crates/ui-egui/src/widgets.rs
-index 2d1f639..967651d 100644
---- a/crates/ui-egui/src/widgets.rs
-+++ b/crates/ui-egui/src/widgets.rs
-@@ -515,19 +515,19 @@ pub fn progress_notice(app: &PdfCraftApp, ctx: &egui::Context) -> bool {
- pub fn artcraft_logo(ui: &mut egui::Ui, height: f32) -> Response {
-     let dark = ui.visuals().dark_mode;
-     let (uri, bytes): (&str, &'static [u8]) = if dark {
--        ("bytes://artcraft-logo-white.svg", include_bytes!("../../../docs/brand/artcraft-logo-white.svg"))
-+        ("bytes://artcraft-logo-white.svg", include_bytes!("../../../greyward-branding/greyward-wordmark.svg"))
-     } else {
--        ("bytes://artcraft-logo.svg", include_bytes!("../../../docs/brand/artcraft-logo.svg"))
-+        ("bytes://artcraft-logo.svg", include_bytes!("../../../greyward-branding/greyward-wordmark.svg"))
-     };
--    ui.add(egui::Image::from_bytes(uri, bytes).max_height(height).alt_text("ArtCraft"))
-+    ui.add(egui::Image::from_bytes(uri, bytes).max_height(height).tint(if dark { egui::Color32::WHITE } else { egui::Color32::from_rgb(0x12, 0x16, 0x1B) }).alt_text("GREYWARD"))
+ /// The socket in `$XDG_RUNTIME_DIR/pdfcraft`; none when `$XDG_RUNTIME_DIR` is unset. Never `/tmp`
+@@ -252,7 +252,7 @@
+                 return match hand_off(&stream, files) {
+                     Ok(()) => Claim::HandedOff,
+                     Err(e) => {
+-                        log::warn!("couldn't hand the files to the running PdfCraft ({e}); opening a new window");
++                        log::warn!("couldn't hand the files to the running PDF ({e}); opening a new window");
+                         Claim::Alone
+                     }
+                 };
+@@ -303,7 +303,7 @@
+     writer.write_all(request(files).as_bytes())?;
+     let mut reply = String::new();
+     std::io::BufReader::new(stream.take(16)).read_line(&mut reply)?;
+-    if reply == "ok\n" { Ok(()) } else { Err(std::io::Error::other("the running PdfCraft didn't confirm")) }
++    if reply == "ok\n" { Ok(()) } else { Err(std::io::Error::other("the running PDF didn't confirm")) }
  }
  
- /// The ArtCraft mark (brand blue, works on light and dark), `size` points square.
- pub fn artcraft_mark(ui: &mut egui::Ui, size: f32) -> Response {
-     ui.add(
--        egui::Image::from_bytes("bytes://artcraft-mark.svg", include_bytes!("../../../docs/brand/artcraft-mark.svg"))
-+        egui::Image::from_bytes("bytes://artcraft-mark.svg", include_bytes!("../../../greyward-branding/greyward-symbol.svg"))
-             .fit_to_exact_size(vec2(size, size))
--            .alt_text("ArtCraft"),
-+            .alt_text("GREYWARD"),
-     )
- }
- 
+ /// Accept launches on a background thread for as long as the process runs.
+diff --git a/apps/pdfcraft/src/tests.rs b/apps/pdfcraft/src/tests.rs
+--- a/apps/pdfcraft/src/tests.rs
++++ b/apps/pdfcraft/src/tests.rs
+@@ -422,7 +422,7 @@
+     // The audited W1 hunk itself, not merely the file's presence: Windows 11 applies the
+     // rect Windows suggests, while Windows 10 keeps the old adjustment.
+     for marker in [
+-        "PdfCraft patch: from Windows 11 (build 22000) on, apply the rect Windows suggests",
++        "PDF patch: from Windows 11 (build 22000) on, apply the rect Windows suggests",
+         "if !WIN10_BUILD_VERSION.is_some_and(|build| build < 22000) {",
+         "new_outer_rect = suggested_rect;",
+     ] {

@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -12,6 +13,7 @@ import urllib.error
 import urllib.request
 
 from artwork import document_mime
+from resource_inputs import validate_record, validate_fonts, declared_fonts, declared_language, brand_catalogs
 
 # Byte-identical mirrors of the two reviewed upstream OCR inputs. The original
 # attribution URLs/checksums remain unchanged. Never infer mirrors for another
@@ -95,14 +97,29 @@ def prepare(repo, cache, output, slug):
     patch = repo / 'packaging/greyward-office' / app['patch']
     if digest(patch) != app['patchSha256']:
         raise ValueError('Unreviewed adaptation')
-    subprocess.run(['git', 'apply', '--check', str(patch.resolve())], cwd=tree, check=True)
-    subprocess.run(['git', 'apply', str(patch.resolve())], cwd=tree, check=True)
+    patch_env = dict(os.environ, GIT_CEILING_DIRECTORIES=str(tree.resolve().parent))
+    subprocess.run(['git', 'apply', '--check', str(patch.resolve())], cwd=tree, env=patch_env, check=True)
+    subprocess.run(['git', 'apply', str(patch.resolve())], cwd=tree, env=patch_env, check=True)
     if app.get('mimeSource') and digest(tree / app['mimeSource']) != app['mimeSha256']:
         raise ValueError('MIME definition drift')
     fonts = next(f for f in manifest['fonts'] if f['commit'] == app['fontsCommit'])
+    validate_record(fonts, 'craft-fonts')
+    if declared_fonts(tree) != app['fontsCommit']:
+        raise ValueError('Font input differs from the upstream release declaration')
     font_archive = verified_file(cache, fonts, fonts['file'])
     font_tree = extract(font_archive, tree, 'craft-fonts-' + fonts['commit'])
     font_tree.rename(tree / 'greyward-fonts')
+    validate_fonts(tree / 'greyward-fonts')
+    language_data = app.get('languageData')
+    if declared_language(tree) != (language_data or {}).get('commit'):
+        raise ValueError('Language input differs from the upstream release declaration')
+    if language_data:
+        validate_record(language_data, 'craft-i18n')
+        language_archive = verified_file(cache, language_data, language_data['file'])
+        language_tree = extract(language_archive, tree, 'craft-i18n-' + language_data['commit'])
+        language_tree.rename(tree / 'greyward-language')
+        original = {'writer': 'WordCraft', 'pdf': 'PdfCraft', 'sheets': 'GridCraft', 'slides': 'DeckCraft'}[slug]
+        brand_catalogs(tree / 'greyward-language', original, app['name'])
     if app.get('runtimeResources'):
         attribution = tree / 'ATTRIBUTION.toml'
         if digest(attribution) != app['resourceManifestSha256']:
@@ -146,6 +163,9 @@ def prepare(repo, cache, output, slug):
                         str(assets / f'{size}.png'), str(icon)], check=True)
     embedded = tree / 'assets/app-icon/hicolor/256x256/apps' / ('ai.storyteller.' + app['upstream'] + '.png')
     shutil.copyfile(assets / '256.png', embedded)
+    about_icon = tree / 'assets/app-icon/hicolor/128x128/apps' / ('ai.storyteller.' + app['upstream'] + '.png')
+    if about_icon.exists():
+        shutil.copyfile(assets / '128.png', about_icon)
     receipt = {'schema': 'greyward.office-build/v1', 'application': app,
                'sourceManifestSha256': digest(repo / 'packaging/greyward-office/source.json'),
                'fonts': fonts, 'toolchain': manifest['toolchain'],

@@ -1,63 +1,7 @@
-diff --git a/apps/wordcraft/src/default_apps.rs b/apps/wordcraft/src/default_apps.rs
-index 263fc73..f7302c9 100644
---- a/apps/wordcraft/src/default_apps.rs
-+++ b/apps/wordcraft/src/default_apps.rs
-@@ -6,7 +6,7 @@
- //! - **Windows** doesn't let apps set defaults: it opens Settings › Default apps on WordCraft's
- //!   page (`ms-settings:defaultapps?registeredAppMachine=WordCraft`; Windows 10 ignores the query
- //!   and shows the Default apps list), where the user picks WordCraft per type.
--//! - **Linux and BSD**: `xdg-mime default ai.storyteller.wordcraft.desktop <types>` for
-+//! - **Linux and BSD**: `xdg-mime default systems.mantis.greyward.Writer.desktop <types>` for
- //!   [`WORD_MIME_TYPES`], which writes the user's `mimeapps.list`. Only when the desktop entry is
- //!   installed (deb, rpm, Flatpak; a bare AppImage has none), and not from inside the Flatpak
- //!   sandbox, which can't change the host's defaults.
-@@ -32,7 +32,7 @@ pub fn hook() -> Option<Hook> {
- 
- /// The desktop entry the Linux packages install, and the Flatpak's app id.
- #[cfg(any(all(unix, not(target_os = "macos")), test))]
--const DESKTOP_ID: &str = "ai.storyteller.wordcraft.desktop";
-+const DESKTOP_ID: &str = "systems.mantis.greyward.Writer.desktop";
- 
- /// The types the button makes WordCraft the default for on Linux and BSD: Word documents and
- /// templates (also macro-enabled and legacy), RTF and ODT. The same set the Windows installer
-@@ -139,7 +139,7 @@ mod tests {
-     fn xdg_mime_sets_every_word_type_in_one_call() {
-         let args = xdg_mime_args(DESKTOP_ID);
-         assert_eq!(args.first().map(String::as_str), Some("default"));
--        assert_eq!(args.get(1).map(String::as_str), Some("ai.storyteller.wordcraft.desktop"));
-+        assert_eq!(args.get(1).map(String::as_str), Some("systems.mantis.greyward.Writer.desktop"));
-         assert_eq!(&args[2..], WORD_MIME_TYPES);
-         for t in [
-             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-diff --git a/apps/wordcraft/src/main.rs b/apps/wordcraft/src/main.rs
-index 8541034..35ff371 100644
---- a/apps/wordcraft/src/main.rs
-+++ b/apps/wordcraft/src/main.rs
-@@ -375,8 +375,8 @@ fn main() -> eframe::Result {
-     }
-     let mut options = eframe::NativeOptions {
-         viewport: egui::ViewportBuilder::default()
--            .with_title("WordCraft")
--            .with_app_id("ai.storyteller.wordcraft")
-+            .with_title("Writer")
-+            .with_app_id("systems.mantis.greyward.Writer")
-             .with_inner_size([1440.0, 920.0])
-             .with_min_inner_size([760.0, 480.0])
-             .with_drag_and_drop(true)
-@@ -418,7 +418,7 @@ fn main() -> eframe::Result {
-     #[cfg(target_os = "macos")]
-     let apple_events = &apple_events;
-     eframe::run_native(
--        "WordCraft",
-+        "Writer",
-         options,
-         Box::new(move |cc| {
-             // The system region picks the new document's paper, the units and the decimal
 diff --git a/crates/ui-egui/src/backstage.rs b/crates/ui-egui/src/backstage.rs
-index 2e8a0ba..9ebceb8 100644
 --- a/crates/ui-egui/src/backstage.rs
 +++ b/crates/ui-egui/src/backstage.rs
-@@ -580,8 +580,8 @@ fn open_page(app: &mut WordApp, ui: &mut Ui) {
+@@ -667,8 +667,8 @@
      // doesn't show up, WordCraft's own browser is always one click away.
      #[cfg(all(unix, not(target_os = "macos"), not(target_arch = "wasm32")))]
      if ui
@@ -69,10 +13,9 @@ index 2e8a0ba..9ebceb8 100644
      {
          let _ = app.run("ui.fileBrowser", json!({}));
 diff --git a/crates/ui-egui/src/chrome.rs b/crates/ui-egui/src/chrome.rs
-index 60053a8..4600e0d 100644
 --- a/crates/ui-egui/src/chrome.rs
 +++ b/crates/ui-egui/src/chrome.rs
-@@ -16,7 +16,7 @@ pub(crate) fn dictionary_problem(lang: &str, unreadable: &Option<(std::path::Pat
+@@ -16,7 +16,7 @@
          )),
          (None, Some(name)) => Some(crate::i18n::fmt(
              tl!(
@@ -81,7 +24,7 @@ index 60053a8..4600e0d 100644
              ),
              &[("language", lang), ("name", name)],
          )),
-@@ -377,7 +377,7 @@ pub fn title_bar(app: &mut WordApp, ui: &mut Ui) {
+@@ -399,7 +399,7 @@
              // Centred title.
              let title = if !app.has_document() {
                  // No document open (#1129): the app's name alone.
@@ -90,49 +33,10 @@ index 60053a8..4600e0d 100644
              } else {
                  format!(
                      "{} — {}",
-diff --git a/crates/ui-egui/src/dialogs.rs b/crates/ui-egui/src/dialogs.rs
-index 35ef212..1bd3fbd 100644
---- a/crates/ui-egui/src/dialogs.rs
-+++ b/crates/ui-egui/src/dialogs.rs
-@@ -1467,8 +1467,8 @@ pub fn show(app: &mut WordApp, ctx: &egui::Context) {
-         Dialog::Refs(d) => d.title(),
-         Dialog::Icons { .. } => "Icons",
-         Dialog::PasteSpecial { .. } => "Paste Special",
--        Dialog::About { .. } => "About WordCraft",
--        Dialog::SaveChanges { .. } => "WordCraft",
-+        Dialog::About { .. } => "About Writer",
-+        Dialog::SaveChanges { .. } => "Writer",
-         Dialog::DiscardRecovery { .. } => "Discard recovery copy",
-         Dialog::RecipientList { .. } => "Recipient List",
-         Dialog::SelectTable { .. } => "Select Table",
-@@ -2718,11 +2718,11 @@ fn body(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
-                 1 => crate::credits::contributors_ui(ui),
-                 2 => crate::credits::models_ui(ui),
-                 _ => {
--                    ui.label(egui::RichText::new(tl!("WordCraft")).font(semibold(22.0)));
-+                    ui.label(egui::RichText::new(tl!("Writer")).font(semibold(22.0)));
-                     let build = option_env!("WORDCRAFT_BUILD_SHA").map(|s| s.get(..8).unwrap_or(s)).unwrap_or(tl!("development build"));
-                     ui.label(crate::i18n::fmt(tl!("Version {version} ({build})"), &[("version", env!("CARGO_PKG_VERSION")), ("build", build)]));
-                     ui.label(tl!(
--                        "A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team."
-+                        "A free, open-source word processor written from scratch in Rust.\nGREYWARD integration based on WordCraft by the ArtCraft team."
-                     ));
-                     ui.add_space(6.0);
-                     ui.hyperlink_to(tl!("getartcraft.com/apps/wordcraft"), "https://getartcraft.com/apps/wordcraft");
-@@ -2887,7 +2887,7 @@ fn body(app: &mut WordApp, ui: &mut Ui, d: &mut Dialog) -> bool {
-             });
-             ui.label(
-                 egui::RichText::new(tl!(
--                    "Keep the password somewhere safe: without it nobody, WordCraft included, can open the document. Leave both boxes empty to remove the password."
-+                    "Keep the password somewhere safe: without it nobody, Writer included, can open the document. Leave both boxes empty to remove the password."
-                 ))
-                 .small()
-                 .weak(),
 diff --git a/crates/ui-egui/src/file_browser.rs b/crates/ui-egui/src/file_browser.rs
-index 843ed05..919eb4e 100644
 --- a/crates/ui-egui/src/file_browser.rs
 +++ b/crates/ui-egui/src/file_browser.rs
-@@ -332,7 +332,7 @@ fn body(ui: &mut Ui, b: &mut FileBrowser, t: &Tokens) -> Option<Option<PathBuf>>
+@@ -338,7 +338,7 @@
      if b.unavailable {
          ui.label(
              egui::RichText::new(tl!(
@@ -141,123 +45,52 @@ index 843ed05..919eb4e 100644
              ))
              .color(t.text_dim),
          );
-diff --git a/crates/ui-egui/src/i18n/audit.rs b/crates/ui-egui/src/i18n/audit.rs
-index 95239ef..45cc0db 100644
---- a/crates/ui-egui/src/i18n/audit.rs
-+++ b/crates/ui-egui/src/i18n/audit.rs
-@@ -177,7 +177,7 @@ impl Exempt {
-             || plain.starts_with('@') // contributor handles
-             || plain.starts_with("Style") || plain.starts_with("Table Style ") // a new style's default name
-             || plain.contains('┬') || plain.contains('\u{2061}') // equation input (UnicodeMath), drawn as math
--            || matches!(plain, "WordCraft" | "WordCraft User" | "Discord" | "https://" | "auto" | "I. II. III." | "i. ii. iii." | "I, II, III, …" | "i, ii, iii, …")
-+            || matches!(plain, "Writer" | "Writer User" | "Discord" | "https://" | "auto" | "I. II. III." | "i. ii. iii." | "I, II, III, …" | "i, ii, iii, …")
-             || plain == "CONFIDENTIAL" // the watermark dialog's text: document content, kept as typed
-             || plain == "Figure 1" // the caption dialog's sample: the label goes into the document as is
-     }
-diff --git a/crates/ui-egui/src/i18n/tests.rs b/crates/ui-egui/src/i18n/tests.rs
-index c05e465..c68fee6 100644
---- a/crates/ui-egui/src/i18n/tests.rs
-+++ b/crates/ui-egui/src/i18n/tests.rs
-@@ -695,7 +695,7 @@ fn a_polish_interface_writes_new_documents_in_polish() {
-     let ctx = egui::Context::default();
-     let frame = |app: &mut crate::WordApp| ctx.run_ui(egui::RawInput::default(), |ui| app.logic(ui.ctx())).drop_without_applying_deltas();
-     frame(&mut app);
--    assert_eq!(app.session.editing_lang, None, "English interface: WordCraft's default, US English");
-+    assert_eq!(app.session.editing_lang, None, "English interface: Writer's default, US English");
-     assert_eq!(app.session.doc.styles.default_chr.lang.as_deref(), Some("en-US"));
-     app.run("ui.language", serde_json::json!({"value": "pl"})).unwrap();
-     frame(&mut app);
-diff --git a/crates/ui-egui/src/lib.rs b/crates/ui-egui/src/lib.rs
-index ccddf1d..13b9b0a 100644
---- a/crates/ui-egui/src/lib.rs
-+++ b/crates/ui-egui/src/lib.rs
-@@ -1806,7 +1806,7 @@ impl WordApp {
-             // MCP get an error.
-             "ui.makeDefaultApp" => {
-                 return Some(Err(
--                    "making WordCraft the default app needs a click in File › Options › General; scripts and agents can't change system defaults"
-+                    "making Writer the default app needs a click in File › Options › General; scripts and agents can't change system defaults"
-                         .into(),
-                 ));
-             }
-@@ -1873,20 +1873,20 @@ impl WordApp {
-     /// command, so nothing programmatic (control channel, MCP, macros) can change system defaults.
-     pub(crate) fn make_default_app(&mut self) -> Result<Value, String> {
-         let Some(hook) = self.services.make_default_app.as_ref() else {
--            return Err("WordCraft can't change the default apps here; use your system's settings".into());
-+            return Err("Writer can't change the default apps here; use your system's settings".into());
-         };
-         match hook() {
-             Ok(DefaultApp::SettingsOpened) => {
--                self.status(tl!("In Default apps, choose WordCraft for the document types you want it to open."));
-+                self.status(tl!("In Default apps, choose Writer for the document types you want it to open."));
-                 Ok(json!({"settingsOpened": true}))
-             }
-             Ok(DefaultApp::MadeDefault) => {
--                self.status(tl!("WordCraft is now the default app for Word documents."));
-+                self.status(tl!("Writer is now the default app for Word documents."));
-                 Ok(json!({"default": true}))
-             }
-             Err(e) => {
-                 log::warn!("make default app: {e}");
--                let msg = i18n::fmt(tl!("Couldn't make WordCraft the default: {error}"), &[("error", &e)]);
-+                let msg = i18n::fmt(tl!("Couldn't make Writer the default: {error}"), &[("error", &e)]);
-                 self.status(msg.clone());
-                 Err(msg)
-             }
-@@ -2521,9 +2521,9 @@ impl WordApp {
-             ctx.open_url(egui::OpenUrl::new_tab(url));
-         }
-         let title = if self.has_document() {
--            format!("{}{} - WordCraft", self.title_stem(), if self.session.dirty { " •" } else { "" })
-+            format!("{}{} - Writer", self.title_stem(), if self.session.dirty { " •" } else { "" })
-         } else {
--            "WordCraft".to_string()
-+            "Writer".to_string()
-         };
-         if title != self.sent_title {
-             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
-@@ -3586,7 +3586,7 @@ mod tests {
-         let a = h.state_mut();
-         assert!(!a.ui.backstage, "Esc leaves the Start screen");
-         assert!(!a.has_document(), "for an empty window, not a blank document");
--        assert_eq!(a.sent_title, "WordCraft", "the window is titled with the app alone");
-+        assert_eq!(a.sent_title, "Writer", "the window is titled with the app alone");
-         // The ribbon's commands are off, but Help, the File tab and the settings work.
-         for id in ["format.bold", "text.insert", "file.save", "file.saveAs", "file.print", "edit.paste", "insert.table", "ui.print"] {
-             assert!(!widgets::enabled(a, id), "{id} is off with no document");
-@@ -6308,7 +6308,7 @@ mod tests {
-     #[test]
-     fn the_default_app_button_shows_only_with_the_hosts_hook() {
-         use egui_kittest::kittest::Queryable;
--        const LABEL: &str = "Make WordCraft the default for Word documents…";
-+        const LABEL: &str = "Make Writer the default for Word documents…";
-         for hook in [false, true] {
-             let calls = std::rc::Rc::new(std::cell::Cell::new(0));
-             let mut a = app();
-@@ -7815,7 +7815,7 @@ mod tests {
-     #[test]
-     fn interface_theme_migrates_and_survives_a_restart() {
-         use theme::Appearance;
--        for (saved, want) in [(r#"{"dark": false}"#, Appearance::Light), (r#"{"dark": true}"#, Appearance::Dark), ("{}", Appearance::System)] {
-+        for (saved, want) in [(r#"{"dark": false}"#, Appearance::Light), (r#"{"dark": true}"#, Appearance::Dark), ("{}", Appearance::Dark)] {
-             let mut a = app();
-             a.apply_prefs(serde_json::from_str(saved).unwrap());
-             assert_eq!(a.ui.theme, want, "{saved}");
-@@ -7829,7 +7829,7 @@ mod tests {
-         assert_eq!(b.ui.theme, Appearance::System);
-         // An unknown saved value keeps the rest of the preferences.
-         let odd: UiState = serde_json::from_str(r#"{"theme": "sepia", "tab": "Insert"}"#).unwrap();
--        assert_eq!((odd.theme, odd.tab.as_str()), (Appearance::System, "Insert"));
-+        assert_eq!((odd.theme, odd.tab.as_str()), (Appearance::Dark, "Insert"));
+diff --git a/crates/ui-egui/src/ibeam.rs b/crates/ui-egui/src/ibeam.rs
+--- a/crates/ui-egui/src/ibeam.rs
++++ b/crates/ui-egui/src/ibeam.rs
+@@ -63,7 +63,7 @@
+     type H = egui_kittest::Harness<'static, WordApp>;
+ 
+     fn window(drawn: bool, dark: bool) -> H {
+-        window_at(drawn, dark, 1.0, 1440.0, "Hello WordCraft")
++        window_at(drawn, dark, 1.0, 1440.0, "Hello Writer")
      }
  
-     /// #1861: the registered Interface Theme command drives the same setting as Options:
+     /// A window at `ppp` physical pixels per point showing `text`.
+@@ -152,7 +152,7 @@
+     #[test]
+     fn the_drawn_i_beam_is_whole_pixels_wide_at_125_and_150_percent() {
+         for ppp in [1.25f32, 1.5] {
+-            let mut h = window_at(true, true, ppp, 1440.0, "Hello WordCraft");
++            let mut h = window_at(true, true, ppp, 1440.0, "Hello Writer");
+             let at = crate::canvas::page_to_screen(h.state_mut(), 0, 300.0, 400.0).unwrap();
+             let strokes = stem_strokes(&mut h, at);
+             assert_eq!(strokes.len(), 2, "ppp {ppp}: the stem's edge and fill");
+diff --git a/crates/ui-egui/src/language_packs.rs b/crates/ui-egui/src/language_packs.rs
+--- a/crates/ui-egui/src/language_packs.rs
++++ b/crates/ui-egui/src/language_packs.rs
+@@ -701,7 +701,7 @@
+     if backend.as_ref().is_some_and(|b| !b.network_on()) {
+         ui.label(
+             RichText::new(tl!(
+-                "Downloading is off. Clicking Add a language… or Install turns it on: WordCraft then downloads language packs and fonts from GitHub."
++                "Downloading is off. Clicking Add a language… or Install turns it on: Writer then downloads language packs and fonts from GitHub."
+             ))
+             .small()
+             .weak(),
+@@ -864,7 +864,7 @@
+ /// About › Language data: the full licence text of the embedded English data and of each
+ /// installed pack.
+ pub(crate) fn about_tab(ui: &mut Ui) {
+-    ui.label(RichText::new(tl!("The spelling and hyphenation data WordCraft uses, and their licences.")).small().weak());
++    ui.label(RichText::new(tl!("The spelling and hyphenation data Writer uses, and their licences.")).small().weak());
+     ui.add_space(4.0);
+     let texts = licence_texts();
+     // A fixed height: entries open and long texts scroll inside it, and the dialog keeps its size.
 diff --git a/crates/ui-egui/src/options.rs b/crates/ui-egui/src/options.rs
-index b758d99..62fcbed 100644
 --- a/crates/ui-egui/src/options.rs
 +++ b/crates/ui-egui/src/options.rs
-@@ -225,9 +225,9 @@ fn general(app: &mut WordApp, ui: &mut Ui) {
+@@ -240,9 +240,9 @@
      section(ui, "Start-up");
      let mut start = app.ui.start_screen;
      if ui
@@ -269,16 +102,25 @@ index b758d99..62fcbed 100644
          ))
          .changed()
      {
-@@ -431,7 +431,7 @@ fn save(app: &mut WordApp, ui: &mut Ui) {
+@@ -481,7 +481,7 @@
      // The browser can't write to the user's files, so AutoSave can't be turned on there (#176).
      let browser = app.autosave_block() == Some(crate::AutoSaveBlock::Browser);
      let mut autosave = app.autosave && !browser;
--    let r = ui.add_enabled(!browser, egui::Checkbox::new(&mut autosave, tl!("AutoSave documents you have saved in WordCraft")));
-+    let r = ui.add_enabled(!browser, egui::Checkbox::new(&mut autosave, tl!("AutoSave documents you have saved in Writer")));
+-    let r = ui.add_enabled_ui(!browser, |ui| ui.checkbox(&mut autosave, tl!("AutoSave documents you have saved in WordCraft"))).inner;
++    let r = ui.add_enabled_ui(!browser, |ui| ui.checkbox(&mut autosave, tl!("AutoSave documents you have saved in Writer"))).inner;
      if browser {
          r.on_disabled_hover_text(crate::AutoSaveBlock::Browser.reason());
      } else if r.changed() {
-@@ -796,17 +796,17 @@ fn overlay<T: DeserializeOwned>(
+@@ -518,7 +518,7 @@
+     let text = if crate::ribbon::caret_no_proof(app) {
+         tl!("The text at the insertion point is marked Do not check spelling or grammar.").to_string()
+     } else if !crate::ribbon::caret_language_proofed(app) {
+-        crate::i18n::fmt(tl!("{language}: WordCraft doesn't check spelling or grammar in this language yet."), &[("language", &lang)])
++        crate::i18n::fmt(tl!("{language}: Writer doesn't check spelling or grammar in this language yet."), &[("language", &lang)])
+     } else {
+         let unreadable = crate::ribbon::caret_unreadable_dictionary(app);
+         crate::chrome::dictionary_problem(&lang, &unreadable, crate::ribbon::caret_missing_dictionary(app))
+@@ -877,17 +877,17 @@
  fn default_app_button(app: &mut WordApp, ui: &mut Ui) {
      if app.services.make_default_app.is_some() {
          let hint = if cfg!(target_os = "windows") {
@@ -300,34 +142,59 @@ index b758d99..62fcbed 100644
                  .small()
                  .weak(),
          );
-@@ -1174,10 +1174,10 @@ mod tests {
-         );
-         h.run_steps(4);
-         assert!(h.query_by_label("Start-up").is_some(), "the section is there");
--        h.get_by_label("Show the Start screen when WordCraft starts").click();
-+        h.get_by_label("Show the Start screen when Writer starts").click();
-         h.run_steps(4);
-         assert!(!h.state().ui.start_screen, "the checkbox turns it off");
--        h.get_by_label("Show the Start screen when WordCraft starts").click();
-+        h.get_by_label("Show the Start screen when Writer starts").click();
-         h.run_steps(4);
-         assert!(h.state().ui.start_screen, "and on again");
-     }
+diff --git a/crates/ui-egui/src/tests.rs b/crates/ui-egui/src/tests.rs
+--- a/crates/ui-egui/src/tests.rs
++++ b/crates/ui-egui/src/tests.rs
+@@ -668,7 +668,7 @@
+     let a = h.state_mut();
+     assert!(!a.ui.backstage, "Esc leaves the Start screen");
+     assert!(!a.has_document(), "for an empty window, not a blank document");
+-    assert_eq!(a.sent_title, "WordCraft", "the window is titled with the app alone");
++    assert_eq!(a.sent_title, "Writer", "the window is titled with the app alone");
+     // The ribbon's commands are off, but Help, the File tab and the settings work.
+     for id in ["format.bold", "text.insert", "file.save", "file.saveAs", "file.print", "edit.paste", "insert.table", "ui.print"] {
+         assert!(!widgets::enabled(a, id), "{id} is off with no document");
+@@ -3616,7 +3616,7 @@
+ #[test]
+ fn the_default_app_button_shows_only_with_the_hosts_hook() {
+     use egui_kittest::kittest::Queryable;
+-    const LABEL: &str = "Make WordCraft the default for Word documents…";
++    const LABEL: &str = "Make Writer the default for Word documents…";
+     for hook in [false, true] {
+         let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+         let mut a = app();
+@@ -5325,7 +5325,7 @@
+ #[test]
+ fn interface_theme_migrates_and_survives_a_restart() {
+     use theme::Appearance;
+-    for (saved, want) in [(r#"{"dark": false}"#, Appearance::Light), (r#"{"dark": true}"#, Appearance::Dark), ("{}", Appearance::System)] {
++    for (saved, want) in [(r#"{"dark": false}"#, Appearance::Light), (r#"{"dark": true}"#, Appearance::Dark), ("{}", Appearance::Dark)] {
+         let mut a = app();
+         a.apply_prefs(serde_json::from_str(saved).unwrap());
+         assert_eq!(a.ui.theme, want, "{saved}");
+@@ -5339,7 +5339,7 @@
+     assert_eq!(b.ui.theme, Appearance::System);
+     // An unknown saved value keeps the rest of the preferences.
+     let odd: UiState = serde_json::from_str(r#"{"theme": "sepia", "tab": "Insert"}"#).unwrap();
+-    assert_eq!((odd.theme, odd.tab.as_str()), (Appearance::System, "Insert"));
++    assert_eq!((odd.theme, odd.tab.as_str()), (Appearance::Dark, "Insert"));
+ }
+ 
+ /// #1861: the registered Interface Theme command drives the same setting as Options:
 diff --git a/crates/ui-egui/src/theme.rs b/crates/ui-egui/src/theme.rs
-index abd8af3..fef3680 100644
 --- a/crates/ui-egui/src/theme.rs
 +++ b/crates/ui-egui/src/theme.rs
-@@ -15,8 +15,8 @@ pub const APP_INK: Color32 = Color32::from_rgb(0x2B, 0x47, 0xB5);
+@@ -15,8 +15,8 @@
  #[serde(from = "String", into = "String")]
  pub enum Appearance {
      Light,
--    Dark,
-     #[default]
-+    Dark,
++    #[default]
+     Dark,
+-    #[default]
      System,
  }
  
-@@ -369,33 +369,33 @@ impl Tokens {
+@@ -369,33 +369,33 @@
      pub fn dark() -> Self {
          Tokens {
              dark: true,
@@ -375,7 +242,7 @@ index abd8af3..fef3680 100644
              selection: Color32::from_rgba_unmultiplied(0x7A, 0x93, 0xF0, 0x55),
              find_highlight: Color32::from_rgba_unmultiplied(0xC8, 0xA8, 0x00, 0x70),
              page_shadow: Color32::from_rgba_unmultiplied(0, 0, 0, 0x60),
-@@ -423,7 +423,7 @@ impl Tokens {
+@@ -423,7 +423,7 @@
                  Color32::from_rgb(0x8E, 0x44, 0xAD),
                  Color32::from_rgb(0xE0, 0x7B, 0x1F),
              ],
@@ -384,11 +251,69 @@ index abd8af3..fef3680 100644
              blue: Color32::from_rgb(0x6C, 0x9B, 0xEA),
              red: Color32::from_rgb(0xEE, 0x6A, 0x6A),
              green: Color32::from_rgb(0x5B, 0xC0, 0x8A),
+diff --git a/crates/ui-egui/src/updates_ui.rs b/crates/ui-egui/src/updates_ui.rs
+--- a/crates/ui-egui/src/updates_ui.rs
++++ b/crates/ui-egui/src/updates_ui.rs
+@@ -54,19 +54,13 @@
+ }
+ 
+ pub(crate) fn check(app: &mut WordApp) {
+-    #[cfg(not(target_arch = "wasm32"))]
+-    {
+-        app.updates_rt.check_requested = true;
+-        app.updates_rt.manual_window_open = true;
+-        if let Some(ctx) = &app.updates_rt.repaint {
+-            ctx.request_repaint();
++    let _ = app;
++        #[cfg(not(target_arch = "wasm32"))]
++        if let Err(error) = std::process::Command::new("/usr/bin/greyward-security-center-route")
++            .arg("updates").spawn()
++        {
++            log::error!("Could not open GREYWARD Update Center: {error}");
+         }
+-    }
+-    #[cfg(target_arch = "wasm32")]
+-    {
+-        app.updates_rt.manual_window_open = true;
+-        app.updates_rt.status_message = Some(tl!("Update check is not supported in the web browser.").to_string());
+-    }
+ }
+ 
+ pub(crate) fn tick(app: &mut WordApp, ctx: &egui::Context) {
+diff --git a/crates/ui-egui/src/windows.rs b/crates/ui-egui/src/windows.rs
+--- a/crates/ui-egui/src/windows.rs
++++ b/crates/ui-egui/src/windows.rs
+@@ -38,7 +38,7 @@
+ 
+ /// The window title for a document called `name`.
+ pub(crate) fn title(name: &str, dirty: bool) -> String {
+-    format!("{name}{} - WordCraft", if dirty { " •" } else { "" })
++    format!("{name}{} - Writer", if dirty { " •" } else { "" })
+ }
+ 
+ /// An open window.
+@@ -569,7 +569,7 @@
+     /// The drawn window's title: its document's name as View › Window › Switch Windows gives it.
+     pub(crate) fn window_title(&self) -> String {
+         if !self.has_document() {
+-            return "WordCraft".to_string();
++            return "Writer".to_string();
+         }
+         let mut name = self.windows.menu_title(self.windows.shown).map(str::to_string).unwrap_or_else(|| self.title_stem());
+         // X11 converts window titles to C strings, which cannot contain NUL (#3634).
+@@ -604,7 +604,7 @@
+             &mut list,
+             |_, key| match titles.get(key).filter(|t| !t.is_empty()) {
+                 Some(t) => base.clone().with_title(t.clone()),
+-                None => base.clone().with_title("WordCraft"),
++                None => base.clone().with_title("Writer"),
+             },
+             |ui, _, key| self.draw_window(ui, *key),
+         );
 diff --git a/crates/ui-egui/src/zotero.rs b/crates/ui-egui/src/zotero.rs
-index e5c4ef3..8700118 100644
 --- a/crates/ui-egui/src/zotero.rs
 +++ b/crates/ui-egui/src/zotero.rs
-@@ -89,7 +89,7 @@ fn status(app: &WordApp) -> Value {
+@@ -96,7 +96,7 @@
  
  #[cfg(target_arch = "wasm32")]
  fn start(_app: &mut WordApp, _cmd: Command, _ctx: Option<egui::Context>) -> Result<Value, String> {
@@ -397,7 +322,7 @@ index e5c4ef3..8700118 100644
  }
  
  #[cfg(not(target_arch = "wasm32"))]
-@@ -107,12 +107,12 @@ fn start(app: &mut WordApp, cmd: Command, ctx: Option<egui::Context>) -> Result<
+@@ -114,12 +114,12 @@
          let r = wordcraft_zotero::client::run_command(&opts, cmd, &mut |call| {
              let (tx, rx) = channel();
              if call_tx.send(Pending { call: call.clone(), reply: tx }).is_err() {
@@ -412,7 +337,7 @@ index e5c4ef3..8700118 100644
          });
          let _ = done_tx.send(r.map_err(|e| e.to_string()));
          if let Some(c) = &wake {
-@@ -170,7 +170,7 @@ pub fn poll(app: &mut WordApp, ctx: &egui::Context) {
+@@ -182,7 +182,7 @@
          app.zotero.methods.push(p.call.method.clone());
          if app.session.document_id() != app.zotero.document {
              // New or Open replaced the document this command started in: its edits must not land in the new one.
@@ -421,3 +346,316 @@ index e5c4ef3..8700118 100644
              continue;
          }
          let rev = app.session.rev();
+diff --git a/crates/ui-egui/src/app/commands.rs b/crates/ui-egui/src/app/commands.rs
+--- a/crates/ui-egui/src/app/commands.rs
++++ b/crates/ui-egui/src/app/commands.rs
+@@ -741,7 +741,7 @@
+             // MCP get an error.
+             "ui.makeDefaultApp" => {
+                 return Some(Err(
+-                    "making WordCraft the default app needs a click in File › Options › General; scripts and agents can't change system defaults"
++                    "making Writer the default app needs a click in File › Options › General; scripts and agents can't change system defaults"
+                         .into(),
+                 ));
+             }
+@@ -809,20 +809,20 @@
+     /// command, so nothing programmatic (control channel, MCP, macros) can change system defaults.
+     pub(crate) fn make_default_app(&mut self) -> Result<Value, String> {
+         let Some(hook) = self.services.make_default_app.as_ref() else {
+-            return Err("WordCraft can't change the default apps here; use your system's settings".into());
++            return Err("Writer can't change the default apps here; use your system's settings".into());
+         };
+         match hook() {
+             Ok(DefaultApp::SettingsOpened) => {
+-                self.status(tl!("In Default apps, choose WordCraft for the document types you want it to open."));
++                self.status(tl!("In Default apps, choose Writer for the document types you want it to open."));
+                 Ok(json!({"settingsOpened": true}))
+             }
+             Ok(DefaultApp::MadeDefault) => {
+-                self.status(tl!("WordCraft is now the default app for Word documents."));
++                self.status(tl!("Writer is now the default app for Word documents."));
+                 Ok(json!({"default": true}))
+             }
+             Err(e) => {
+                 log::warn!("make default app: {e}");
+-                let msg = i18n::fmt(tl!("Couldn't make WordCraft the default: {error}"), &[("error", &e)]);
++                let msg = i18n::fmt(tl!("Couldn't make Writer the default: {error}"), &[("error", &e)]);
+                 self.status(msg.clone());
+                 Err(msg)
+             }
+diff --git a/crates/ui-egui/src/canvas/tests.rs b/crates/ui-egui/src/canvas/tests.rs
+--- a/crates/ui-egui/src/canvas/tests.rs
++++ b/crates/ui-egui/src/canvas/tests.rs
+@@ -340,7 +340,7 @@
+     assert_eq!(caret_contrast(Rgb(0x33, 0x33, 0x33)), Color32::WHITE, "dark paper");
+     assert_eq!(caret_contrast(Rgb(0xC0, 0xC0, 0xC0)), Color32::BLACK, "light grey");
+ 
+-    let doc = wordcraft_doc::Document::from_text("Hello WordCraft");
++    let doc = wordcraft_doc::Document::from_text("Hello Writer");
+     let mut a = WordApp::new(wordcraft_engine::Session::new(doc), Default::default());
+     let at = |a: &mut WordApp, off: usize| {
+         let layout = a.session.layout();
+@@ -368,7 +368,7 @@
+ #[test]
+ fn read_mode_page_color_sets_the_reading_paper() {
+     use wordcraft_doc::props::Rgb;
+-    let mut a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::from_text("Hello WordCraft")), Default::default());
++    let mut a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::from_text("Hello Writer")), Default::default());
+     a.run("design.pageColor", json!({"color": "#102040"})).unwrap();
+     let paper = |a: &WordApp| page_render_options(a, false).paper_of(&a.session.doc);
+     assert_eq!(paper(&a), Rgb(0x10, 0x20, 0x40), "Print Layout shows the page color");
+@@ -411,7 +411,7 @@
+ #[test]
+ fn drawing_over_the_pages_follows_the_read_mode_page_color() {
+     use wordcraft_doc::props::Rgb;
+-    let mut a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::from_text("Hello WordCraft")), Default::default());
++    let mut a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::from_text("Hello Writer")), Default::default());
+     a.run("design.pageColor", json!({"color": "#102040"})).unwrap();
+     let blank = |a: &WordApp| page_render_options(a, false).blank_paper();
+     let grey = Rgb(wordcraft_render::DARK_PAPER, wordcraft_render::DARK_PAPER, wordcraft_render::DARK_PAPER);
+@@ -437,7 +437,7 @@
+ /// there is no caret, so the page's draw list isn't built for it.
+ #[test]
+ fn caret_colour_is_not_worked_out_while_the_caret_is_hidden() {
+-    let mut a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::from_text("Hello WordCraft")), Default::default());
++    let mut a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::from_text("Hello Writer")), Default::default());
+     a.run("select.text", json!({"text": "Hello"})).unwrap();
+     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).build_ui_state(
+         |ui, app: &mut WordApp| {
+@@ -1520,7 +1520,7 @@
+ }
+ 
+ fn assert_balloon_timestamp(when: &str) {
+-    assert_eq!(when.len(), 16, "WordCraft comments carry a local YYYY-MM-DD HH:MM timestamp: {when:?}");
++    assert_eq!(when.len(), 16, "Writer comments carry a local YYYY-MM-DD HH:MM timestamp: {when:?}");
+     let b = when.as_bytes();
+     assert_eq!((b.get(4), b.get(7), b.get(10), b.get(13)), (Some(&b'-'), Some(&b'-'), Some(&b' '), Some(&b':')), "timestamp separators: {when:?}");
+     assert!(b.iter().enumerate().all(|(i, c)| matches!(i, 4 | 7 | 10 | 13) || c.is_ascii_digit()), "timestamp fields are digits: {when:?}");
+@@ -4842,7 +4842,7 @@
+ /// the preview follows the pointer, and the object shows twice.
+ #[test]
+ fn the_view_key_changes_when_a_drag_takes_an_object_off_the_page() {
+-    let doc = wordcraft_doc::Document::from_text("Hello WordCraft");
++    let doc = wordcraft_doc::Document::from_text("Hello Writer");
+     let app = WordApp::new(wordcraft_engine::Session::new(doc), Default::default());
+     let object = Pos::body(0, 5);
+     let hidden = view_key(&app, false, Some(&object));
+diff --git a/crates/ui-egui/src/dialogs/chrome.rs b/crates/ui-egui/src/dialogs/chrome.rs
+--- a/crates/ui-egui/src/dialogs/chrome.rs
++++ b/crates/ui-egui/src/dialogs/chrome.rs
+@@ -176,8 +176,8 @@
+         Dialog::Refs(d) => d.title(),
+         Dialog::Icons { .. } => "Icons",
+         Dialog::PasteSpecial { .. } => "Paste Special",
+-        Dialog::About { .. } => "About WordCraft",
+-        Dialog::SaveChanges { .. } => "WordCraft",
++        Dialog::About { .. } => "About Writer",
++        Dialog::SaveChanges { .. } => "Writer",
+         Dialog::DiscardRecovery { .. } => "Discard recovery copy",
+         Dialog::RecipientList { .. } => "Recipient List",
+         Dialog::SelectTable { .. } => "Select Table",
+diff --git a/crates/ui-egui/src/dialogs/dispatch.rs b/crates/ui-egui/src/dialogs/dispatch.rs
+--- a/crates/ui-egui/src/dialogs/dispatch.rs
++++ b/crates/ui-egui/src/dialogs/dispatch.rs
+@@ -1153,10 +1153,10 @@
+         2 => crate::credits::models_ui(ui),
+         3 => crate::language_packs::about_tab(ui),
+         _ => {
+-            ui.label(egui::RichText::new(tl!("WordCraft")).font(semibold(22.0)));
++            ui.label(egui::RichText::new(tl!("Writer")).font(semibold(22.0)));
+             let build = option_env!("WORDCRAFT_BUILD_SHA").map(|s| s.get(..8).unwrap_or(s)).unwrap_or(tl!("development build"));
+             ui.label(crate::i18n::fmt(tl!("Version {version} ({build})"), &[("version", env!("CARGO_PKG_VERSION")), ("build", build)]));
+-            ui.label(tl!("A free, open-source word processor written from scratch in Rust.\nPart of the Crafting Apps from the ArtCraft team."));
++            ui.label(tl!("A free, open-source word processor written from scratch in Rust.\nGREYWARD integration based on WordCraft by the ArtCraft team."));
+             ui.add_space(6.0);
+             ui.hyperlink_to(tl!("getartcraft.com/apps/wordcraft"), "https://getartcraft.com/apps/wordcraft");
+             ui.hyperlink_to(tl!("Join us on Discord: discord.gg/artcraft"), "https://discord.gg/artcraft");
+@@ -1339,7 +1339,7 @@
+     });
+     ui.label(
+         egui::RichText::new(tl!(
+-            "Keep the password somewhere safe: without it nobody, WordCraft included, can open the document. Leave both boxes empty to remove the password."
++            "Keep the password somewhere safe: without it nobody, Writer included, can open the document. Leave both boxes empty to remove the password."
+         ))
+         .small()
+         .weak(),
+diff --git a/crates/ui-egui/src/i18n/audit.rs b/crates/ui-egui/src/i18n/audit.rs
+--- a/crates/ui-egui/src/i18n/audit.rs
++++ b/crates/ui-egui/src/i18n/audit.rs
+@@ -232,7 +232,7 @@
+             || plain.starts_with('@') // contributor handles
+             || plain.starts_with("Style") || plain.starts_with("Table Style ") // a new style's default name
+             || plain.contains('┬') || plain.contains('\u{2061}') // equation input (UnicodeMath), drawn as math
+-            || matches!(plain, "WordCraft" | "WordCraft User" | "Discord" | "https://" | "auto" | "I. II. III." | "i. ii. iii." | "I, II, III, …" | "i, ii, iii, …")
++            || matches!(plain, "Writer" | "Writer User" | "Discord" | "https://" | "auto" | "I. II. III." | "i. ii. iii." | "I, II, III, …" | "i, ii, iii, …")
+             || plain == "CONFIDENTIAL" // the watermark dialog's text: document content, kept as typed
+             || plain == "Figure 1" // the caption dialog's sample: the label goes into the document as is
+     }
+diff --git a/crates/ui-egui/src/i18n/tests.rs b/crates/ui-egui/src/i18n/tests.rs
+--- a/crates/ui-egui/src/i18n/tests.rs
++++ b/crates/ui-egui/src/i18n/tests.rs
+@@ -730,7 +730,7 @@
+     let ctx = egui::Context::default();
+     let frame = |app: &mut crate::WordApp| ctx.run_ui(egui::RawInput::default(), |ui| app.logic(ui.ctx())).drop_without_applying_deltas();
+     frame(&mut app);
+-    assert_eq!(app.session.editing_lang, None, "English interface: WordCraft's default, US English");
++    assert_eq!(app.session.editing_lang, None, "English interface: Writer's default, US English");
+     assert_eq!(app.session.doc.styles.default_chr.lang.as_deref(), Some("en-US"));
+     app.run("ui.language", serde_json::json!({"value": "pl"})).unwrap();
+     frame(&mut app);
+@@ -1170,7 +1170,7 @@
+         return;
+     }
+     let listed: Vec<&str> = LANGUAGES.iter().map(|l| l.code).collect();
+-    assert_eq!(all, listed, "every language WordCraft lists has its catalog in craft-i18n");
++    assert_eq!(all, listed, "every language Writer lists has its catalog in craft-i18n");
+     assert!(Lang::from_code("pseudo").is_none(), "the pseudo locale is never a setting");
+ }
+ 
+@@ -1233,7 +1233,7 @@
+     let ar = arabic_fixture(concat!(
+         "\tTable of Contents\tجدول المحتويات\n",
+         "\tPaste Special…\tلصق خاص…\n",
+-        "\tAbout WordCraft\tحول WordCraft\n",
++        "\tAbout Writer\tحول Writer\n",
+         "\tPassword:\tكلمة المرور:\n",
+         "\tTable of\\nContents\tجدول\\nالمحتويات\n",
+         "\tPage {page} of {pages}\tالصفحة {page} من {pages}\n",
+@@ -1245,7 +1245,7 @@
+     assert!(ar.rtl());
+     assert_eq!(tr(ar, "Table of Contents"), "جدول المحتويات");
+     assert_eq!(tr(ar, "Paste Special…"), "لصق خاص…");
+-    assert_eq!(tr(ar, "About WordCraft"), "حول WordCraft");
++    assert_eq!(tr(ar, "About Writer"), "حول Writer");
+     assert_eq!(tr(ar, "Password:"), "كلمة المرور:");
+     // A two-line ribbon label keeps its two lines.
+     assert_eq!(tr(ar, "Table of\nContents"), "جدول\nالمحتويات");
+diff --git a/crates/ui-egui/src/options/tests.rs b/crates/ui-egui/src/options/tests.rs
+--- a/crates/ui-egui/src/options/tests.rs
++++ b/crates/ui-egui/src/options/tests.rs
+@@ -44,7 +44,7 @@
+ #[test]
+ fn user_name_field_disables_when_protection_starts() {
+     let mut h = nav_harness("en", 100);
+-    let user_name = || egui_kittest::kittest::By::new().role(egui::accesskit::Role::TextInput).value("WordCraft User");
++    let user_name = || egui_kittest::kittest::By::new().role(egui::accesskit::Role::TextInput).value("Writer User");
+     assert!(!h.get(user_name()).accesskit_node().is_disabled());
+     h.state_mut().run("review.restrict", json!({"mode": "readOnly"})).unwrap();
+     h.run_steps(4);
+@@ -349,10 +349,10 @@
+     );
+     h.run_steps(4);
+     assert!(h.query_by_label("Start-up").is_some(), "the section is there");
+-    h.get_by_label("Show the Start screen when WordCraft starts").click();
++    h.get_by_label("Show the Start screen when Writer starts").click();
+     h.run_steps(4);
+     assert!(!h.state().ui.start_screen, "the checkbox turns it off");
+-    h.get_by_label("Show the Start screen when WordCraft starts").click();
++    h.get_by_label("Show the Start screen when Writer starts").click();
+     h.run_steps(4);
+     assert!(h.state().ui.start_screen, "and on again");
+ }
+diff --git a/apps/wordcraft/src/clipboard.rs b/apps/wordcraft/src/clipboard.rs
+--- a/apps/wordcraft/src/clipboard.rs
++++ b/apps/wordcraft/src/clipboard.rs
+@@ -129,7 +129,7 @@
+         Err(arboard::Error::ConversionFailure) => Some(
+             platform::encoded_picture()
+                 .map(ClipboardPicture::Encoded)
+-                .unwrap_or_else(|| ClipboardPicture::Unreadable("WordCraft can't decode its format".into())),
++                .unwrap_or_else(|| ClipboardPicture::Unreadable("Writer can't decode its format".into())),
+         ),
+         Err(e) => {
+             log::warn!("clipboard picture: {e}");
+diff --git a/apps/wordcraft/src/default_apps.rs b/apps/wordcraft/src/default_apps.rs
+--- a/apps/wordcraft/src/default_apps.rs
++++ b/apps/wordcraft/src/default_apps.rs
+@@ -32,7 +32,7 @@
+ 
+ /// The desktop entry the Linux packages install, and the Flatpak's app id.
+ #[cfg(any(all(unix, not(target_os = "macos")), test))]
+-const DESKTOP_ID: &str = "ai.storyteller.wordcraft.desktop";
++const DESKTOP_ID: &str = "systems.mantis.greyward.Writer.desktop";
+ 
+ /// The types the button makes WordCraft the default for on Linux and BSD: Word documents and
+ /// templates (also macro-enabled and legacy), RTF and ODT. The same set the Windows installer
+@@ -85,7 +85,7 @@
+ 
+     /// Settings › Default apps, on the page of the app registered as `WordCraft` under
+     /// `HKLM\Software\RegisteredApplications` (the MSI writes it).
+-    const SETTINGS_URI: &str = "ms-settings:defaultapps?registeredAppMachine=WordCraft";
++    const SETTINGS_URI: &str = "ms-settings:defaultapps?registeredAppMachine=Writer";
+ 
+     pub(super) fn open_default_apps() -> Result<DefaultApp, String> {
+         open::that_detached(SETTINGS_URI).map_err(|e| format!("couldn't open Settings: {e}"))?;
+@@ -107,7 +107,7 @@
+     pub(super) fn make_default() -> Result<DefaultApp, String> {
+         if std::env::var_os("FLATPAK_ID").is_some() || std::path::Path::new("/.flatpak-info").exists() {
+             return Err(
+-                "the Flatpak sandbox can't change default apps; choose WordCraft under Open With in your file manager or system settings".into()
++                "the Flatpak sandbox can't change default apps; choose Writer under Open With in your file manager or system settings".into()
+             );
+         }
+         let var = |k: &str| std::env::var(k).ok();
+@@ -140,7 +140,7 @@
+     fn xdg_mime_sets_every_word_type_in_one_call() {
+         let args = xdg_mime_args(DESKTOP_ID);
+         assert_eq!(args.first().map(String::as_str), Some("default"));
+-        assert_eq!(args.get(1).map(String::as_str), Some("ai.storyteller.wordcraft.desktop"));
++        assert_eq!(args.get(1).map(String::as_str), Some("systems.mantis.greyward.Writer.desktop"));
+         assert_eq!(&args[2..], WORD_MIME_TYPES);
+         for t in [
+             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+diff --git a/apps/wordcraft/src/main.rs b/apps/wordcraft/src/main.rs
+--- a/apps/wordcraft/src/main.rs
++++ b/apps/wordcraft/src/main.rs
+@@ -459,7 +459,7 @@
+     if let Some(logger) = logger {
+         match log_dir().filter(|_| prefs_enabled()) {
+             Some(dir) => match logger.attach_dir(&dir) {
+-                Ok(path) => log::info!("WordCraft {} ({}), log file {}", env!("CARGO_PKG_VERSION"), build_sha(), path.display()),
++                Ok(path) => log::info!("Writer {} ({}), log file {}", env!("CARGO_PKG_VERSION"), build_sha(), path.display()),
+                 // Standard error only by now (`attach_dir` gave up on the file); unlike `eprintln!`, never panics.
+                 Err(e) => log::warn!("no log file: {e}"),
+             },
+@@ -468,8 +468,8 @@
+     }
+     let mut options = eframe::NativeOptions {
+         viewport: egui::ViewportBuilder::default()
+-            .with_title("WordCraft")
+-            .with_app_id("ai.storyteller.wordcraft")
++            .with_title("Writer")
++            .with_app_id("systems.mantis.greyward.Writer")
+             .with_inner_size([1440.0, 920.0])
+             .with_min_inner_size([760.0, 480.0])
+             .with_drag_and_drop(true)
+@@ -513,7 +513,7 @@
+     #[cfg(target_os = "macos")]
+     let apple_events = &apple_events;
+     eframe::run_native(
+-        "WordCraft",
++        "Writer",
+         options,
+         Box::new(move |cc| {
+             // The system region picks the new document's paper, the units and the decimal
+@@ -524,7 +524,7 @@
+             let mut session = Session::new(doc);
+             session.system_region = region;
+             let mut app = WordApp::new(session, services(file_dialog, &cc.egui_ctx));
+-            app.set_startup_update_check(true);
++            app.set_startup_update_check(false);
+             load_prefs(&mut app);
+             load_user_dictionary(&mut app);
+             // Language packs from the suite's font store; an Install click is the person's own.
+diff --git a/apps/wordcraft/src/print.rs b/apps/wordcraft/src/print.rs
+--- a/apps/wordcraft/src/print.rs
++++ b/apps/wordcraft/src/print.rs
+@@ -45,7 +45,7 @@
+                 }),
+                 grayscale: settings.grayscale,
+                 scaling: craft_print::Scaling::ShrinkToFit,
+-                title: "WordCraft document".into(),
++                title: "Writer document".into(),
+                 options,
+             };
+             let _ = sender.send(craft_print::submit(&bytes, &job).map_err(|error| error.to_string()));

@@ -7,9 +7,12 @@ import json
 from pathlib import Path
 import re
 import shutil
+import sys
 import tarfile
 
 from model import SLUGS, SHA
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from resource_inputs import validate_record
 
 
 def digest(path):
@@ -21,11 +24,18 @@ def validate_candidate(base, value):
     if set(base) != set(value) or type(value.get('rpmRelease')) is not int or value['rpmRelease'] < base['rpmRelease']:
         raise ValueError('Invalid candidate generation/schema')
     for key in base:
-        if key not in ('applications', 'rpmRelease') and base[key] != value[key]:
+        if key not in ('applications', 'rpmRelease', 'fonts') and base[key] != value[key]:
             raise ValueError('Candidate changed trusted recipe: ' + key)
     if len(value['applications']) != 4:
         raise ValueError('Incomplete candidate family')
-    mutable = {'version', 'tag', 'commit', 'url', 'archive', 'sha256', 'cargoLockSha256', 'adaptedInputs', 'fontsWorkflowSource', 'noticeSha256'}
+    mutable = {'version', 'tag', 'commit', 'url', 'archive', 'sha256', 'cargoLockSha256', 'adaptedInputs', 'fontsWorkflowSource', 'noticeSha256', 'fontsCommit', 'languageData', 'resourceManifestSha256'}
+    for record in value['fonts']:
+        validate_record(record, 'craft-fonts')
+        previous = next((r for r in base['fonts'] if r['commit'] == record['commit']), None)
+        if previous and record != previous:
+            raise ValueError('Published immutable font input changed')
+    if len({r['commit'] for r in value['fonts']}) != len(value['fonts']):
+        raise ValueError('Duplicate font resource')
     for old, new in zip(base['applications'], value['applications']):
         if set(old) != set(new) or any(old[k] != new[k] for k in old if k not in mutable):
             raise ValueError('Candidate changed reviewed identity/patch/resources')
@@ -45,6 +55,15 @@ def validate_candidate(base, value):
         if new['version'] != old['version'] and new.get('fontsWorkflowSource'):
             if new['fontsWorkflowSource'].get('commit') != commit or not SHA.fullmatch(new['fontsWorkflowSource'].get('sha256', '')):
                 raise ValueError('Font workflow provenance must refer to the captured release commit')
+        if new.get('languageData'):
+            validate_record(new['languageData'], 'craft-i18n')
+            previous = old.get('languageData')
+            if previous and previous['commit'] == new['languageData']['commit'] and previous != new['languageData']:
+                raise ValueError('Published immutable language input changed')
+        if new['fontsCommit'] not in {r['commit'] for r in value['fonts']}:
+            raise ValueError('Missing declared font resource')
+        if new.get('resourceManifestSha256') and not SHA.fullmatch(new['resourceManifestSha256']):
+            raise ValueError('Invalid resource manifest digest')
 
 
 def recipe_files(repo):
@@ -52,7 +71,7 @@ def recipe_files(repo):
     office = ('artwork.py', 'build.py', 'build-all.py', 'channel.json', 'check-updates.py',
               'source.json', 'stage-channel.py', 'greyward-office.repo.in', 'migrate-associations.py',
               'office.spec.in', 'prepare.py', 'prepare-update.py', 'render-icons.py', 'repository.py',
-              'upstream.py', 'verify-inputs.py', 'licenses/CC-BY-SA-4.0.txt', 'licenses/README.md',
+              'upstream.py', 'verify-inputs.py', 'resource_inputs.py', 'licenses/CC-BY-SA-4.0.txt', 'licenses/README.md',
               'keys/RPM-GPG-KEY-greyward-office.gpg', 'patches/wordcraft.patch', 'patches/gridcraft.patch',
               'patches/pdfcraft.patch', 'patches/deckcraft.patch')
     automation = ('Containerfile', 'bootstrap.py', 'candidate.py', 'ci-build.sh', 'dependency-policy.json',
