@@ -356,12 +356,14 @@ class ResourceInputTests(unittest.TestCase):
         from resource_inputs import brand_catalogs
         with tempfile.TemporaryDirectory() as temporary:
             tree = Path(temporary); (tree / 'locales/fr').mkdir(parents=True)
-            catalog = tree / 'locales/fr/wordcraft.tsv'; catalog.write_text('About WordCraft\tA propos de WordCraft\n')
+            catalog = tree / 'locales/fr/wordcraft.tsv'
+            catalog.write_text('About WordCraft\tA propos de WordCraft\n© WordCraft contributors\t© WordCraft contributors\n', encoding='utf-8')
             (tree / 'language-data').mkdir()
             dictionary = tree / 'language-data/wordcraft.dic'; dictionary.write_bytes(b'WordCraft\n')
             license_file = tree / 'LICENSE'; license_file.write_bytes(b'WordCraft copyright\n')
             brand_catalogs(tree, 'WordCraft', 'Writer')
-            self.assertIn('Writer', catalog.read_text())
+            self.assertIn('Writer', catalog.read_text(encoding='utf-8'))
+            self.assertIn('© WordCraft contributors', catalog.read_text(encoding='utf-8'))
             self.assertEqual(dictionary.read_bytes(), b'WordCraft\n')
             self.assertEqual(license_file.read_bytes(), b'WordCraft copyright\n')
 

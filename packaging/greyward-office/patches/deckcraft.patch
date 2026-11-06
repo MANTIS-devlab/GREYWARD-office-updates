@@ -200,15 +200,6 @@ diff --git a/crates/ui-egui/src/backstage/print.rs b/crates/ui-egui/src/backstag
 diff --git a/crates/ui-egui/src/backstage/tests.rs b/crates/ui-egui/src/backstage/tests.rs
 --- a/crates/ui-egui/src/backstage/tests.rs
 +++ b/crates/ui-egui/src/backstage/tests.rs
-@@ -193,7 +193,7 @@
-     );
-     h.state_mut().run("app.backstage", json!({"page": "new"})).unwrap();
-     h.run_steps(3);
--    let tiles = ["DeckCraft", "Harbor", "Ember", "Meadow", "Nocturne", "Paper", "Briefing"];
-+    let tiles = ["Slides", "Harbor", "Ember", "Meadow", "Nocturne", "Paper", "Briefing"];
-     for label in tiles {
-         let r = h.get_by_label(label).rect();
-         assert!(r.right() <= 1000.0 - 36.0, "{label} ends at {}, inside the 36pt right margin", r.right());
 @@ -596,7 +596,7 @@
      }
      h.run_steps(2);
@@ -221,7 +212,7 @@ diff --git a/crates/ui-egui/src/backstage/tests.rs b/crates/ui-egui/src/backstag
 diff --git a/crates/ui-egui/src/dialogs/about.rs b/crates/ui-egui/src/dialogs/about.rs
 --- a/crates/ui-egui/src/dialogs/about.rs
 +++ b/crates/ui-egui/src/dialogs/about.rs
-@@ -20,7 +20,7 @@
+@@ -20,11 +20,11 @@
      ui.vertical_centered(|ui| {
          let (r, _) = ui.allocate_exact_size(vec2(64.0, 64.0), Sense::hover());
          paint_logo(ui.painter(), r);
@@ -230,15 +221,42 @@ diff --git a/crates/ui-egui/src/dialogs/about.rs b/crates/ui-egui/src/dialogs/ab
          ui.label(egui::RichText::new(version_line()).color(t.text_dim));
          ui.add_space(6.0);
          ui.label("Presentations and slide shows, rebuilt from scratch in pure Rust.");
-@@ -30,7 +30,7 @@
-         ui.hyperlink_to("getartcraft.com/apps/deckcraft", deckcraft_engine::links::APP_PAGE);
-         ui.hyperlink_to("Source on GitHub", deckcraft_engine::links::GITHUB);
+-        ui.label("An open-source, clean-room project. Not affiliated with Microsoft.");
++        ui.label("GREYWARD integration based on DeckCraft by the ArtCraft team.");
          ui.add_space(6.0);
--        ui.label(egui::RichText::new("MIT OR Apache-2.0 · © 2026 ArtCraft Team and the DeckCraft contributors").size(11.0).color(t.text_faint));
-+        ui.label(egui::RichText::new("MIT OR Apache-2.0 · © 2026 ArtCraft Team and the Slides contributors").size(11.0).color(t.text_faint));
-     });
+         ui.hyperlink_to("Join our community on Discord", deckcraft_engine::links::DISCORD);
+         ui.hyperlink_to("getartcraft.com/apps/deckcraft", deckcraft_engine::links::APP_PAGE);
+@@ -51,18 +51,19 @@
+ 
+ /// DeckCraft's mark, drawn in code: a slide card with a play triangle in our orange.
+ pub fn paint_logo(p: &egui::Painter, r: Rect) {
+-    let orange = Color32::from_rgb(0xF2, 0x6B, 0x1D);
+-    let deep = Color32::from_rgb(0xC2, 0x4E, 0x14);
++    // Original GREYWARD presentation emblem, matching the application family.
+     let card = r.shrink(r.width() * 0.08);
+-    p.rect_filled(card.translate(vec2(r.width() * 0.04, r.width() * 0.05)), CornerRadius::same((r.width() * 0.14) as u8), deep);
+-    p.rect_filled(card, CornerRadius::same((r.width() * 0.14) as u8), orange);
+-    let c = card.center();
+-    let s = card.width() * 0.22;
+-    p.add(egui::Shape::convex_polygon(
+-        vec![pos2(c.x - s * 0.7, c.y - s), pos2(c.x + s, c.y), pos2(c.x - s * 0.7, c.y + s)],
+-        Color32::WHITE,
+-        Stroke::NONE,
+-    ));
++    let accent = Color32::from_rgb(0xC6, 0x8D, 0x5F);
++    p.rect_filled(card, CornerRadius::same(8), Color32::from_rgb(0x12, 0x16, 0x1B));
++    p.rect_stroke(card, CornerRadius::same(8), Stroke::new(1.0, Color32::from_rgb(0x92, 0xA3, 0xB1)), egui::StrokeKind::Inside);
++    let panel = Rect::from_min_max(pos2(card.left() + card.width() * 0.18, card.top() + card.height() * 0.2),
++                                   pos2(card.right() - card.width() * 0.18, card.bottom() - card.height() * 0.3));
++    p.rect_stroke(panel, CornerRadius::ZERO, Stroke::new(2.0, accent), egui::StrokeKind::Inside);
++    for (i, height) in [0.25, 0.6, 0.4].iter().enumerate() {
++        let x = panel.left() + panel.width() * (0.25 + i as f32 * 0.25);
++        p.line_segment([pos2(x, panel.bottom() - 4.0), pos2(x, panel.bottom() - panel.height() * height)], Stroke::new(3.0, accent));
++    }
++    p.line_segment([pos2(panel.center().x, panel.bottom()), pos2(panel.center().x, card.bottom() - 5.0)], Stroke::new(2.0, accent));
  }
  
+ #[cfg(test)]
 diff --git a/crates/ui-egui/src/dialogs/find.rs b/crates/ui-egui/src/dialogs/find.rs
 --- a/crates/ui-egui/src/dialogs/find.rs
 +++ b/crates/ui-egui/src/dialogs/find.rs
@@ -260,30 +278,6 @@ diff --git a/crates/ui-egui/src/dialogs/find.rs b/crates/ui-egui/src/dialogs/fin
              d.fields.remove("cur");
          } else {
              let n = d.get("next", "0").parse::<usize>().unwrap_or(0) % list.len();
-diff --git a/crates/ui-egui/src/dialogs/photo_album.rs b/crates/ui-egui/src/dialogs/photo_album.rs
---- a/crates/ui-egui/src/dialogs/photo_album.rs
-+++ b/crates/ui-egui/src/dialogs/photo_album.rs
-@@ -93,7 +93,7 @@
-         .and_then(|d| d.doc.masters.first())
-         .map(|m| m.theme.name.clone())
-         .filter(|n| !n.is_empty())
--        .unwrap_or_else(|| "DeckCraft".into())
-+        .unwrap_or_else(|| "Slides".into())
- }
- 
- fn album_json_id(v: &Value) -> Option<u64> {
-diff --git a/crates/ui-egui/src/dialogs/theme_colors_tests.rs b/crates/ui-egui/src/dialogs/theme_colors_tests.rs
---- a/crates/ui-egui/src/dialogs/theme_colors_tests.rs
-+++ b/crates/ui-egui/src/dialogs/theme_colors_tests.rs
-@@ -130,7 +130,7 @@
-     h.get_by_label("Save").click();
-     h.run_steps(2);
-     assert!(h.state().dialog.is_none(), "status: {:?}", h.state().status);
--    assert_eq!(scheme(&h).name, "DeckCraft");
-+    assert_eq!(scheme(&h).name, "Slides");
-     assert_eq!(scheme(&h).get(SchemeSlot::Accent1).hex(), "11AA22");
-     assert_eq!(undo_len(&h), n + 1);
- }
 diff --git a/crates/ui-egui/src/dialogs/updates_ui.rs b/crates/ui-egui/src/dialogs/updates_ui.rs
 --- a/crates/ui-egui/src/dialogs/updates_ui.rs
 +++ b/crates/ui-egui/src/dialogs/updates_ui.rs
@@ -311,27 +305,6 @@ diff --git a/crates/ui-egui/src/dialogs/updates_ui.rs b/crates/ui-egui/src/dialo
  }
  
  pub(crate) fn tick(app: &mut SlideApp, ctx: &egui::Context) {
-diff --git a/crates/ui-egui/src/ribbon/effects_tests.rs b/crates/ui-egui/src/ribbon/effects_tests.rs
---- a/crates/ui-egui/src/ribbon/effects_tests.rs
-+++ b/crates/ui-egui/src/ribbon/effects_tests.rs
-@@ -27,7 +27,7 @@
- #[test]
- fn effects_menu_applies_a_scheme_once() {
-     let mut h = harness();
--    assert_eq!(format_name(&h), "DeckCraft");
-+    assert_eq!(format_name(&h), "Slides");
-     let n = h.state().session.active().unwrap().history.undo.len();
-     h.get_by_label("Effects").click();
-     h.run_steps(2);
-@@ -35,7 +35,7 @@
-     h.run_steps(2);
-     assert_eq!(format_name(&h), "Soft");
-     assert_eq!(h.state().session.active().unwrap().history.undo.len(), n + 1);
--    assert_eq!(h.state().session.active().unwrap().doc.masters[0].theme.name, "DeckCraft");
-+    assert_eq!(h.state().session.active().unwrap().doc.masters[0].theme.name, "Slides");
- 
-     h.get_by_label("Effects").click();
-     h.run_steps(2);
 diff --git a/crates/ui-egui/src/ribbon/title_bar.rs b/crates/ui-egui/src/ribbon/title_bar.rs
 --- a/crates/ui-egui/src/ribbon/title_bar.rs
 +++ b/crates/ui-egui/src/ribbon/title_bar.rs

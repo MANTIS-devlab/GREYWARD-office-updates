@@ -83,7 +83,7 @@
       "accent": "#70B395",
       "category": "Spreadsheet",
       "patch": "patches/gridcraft.patch",
-      "patchSha256": "2b3f79104b231fed53b6a3c73a3f81d7e4c2ecd4dc487a559d2d7ed48607c104",
+      "patchSha256": "3d31e2914ef540f8d0e8b8c5ffa87398ad4a11951a371ef90392fe93a2091b5e",
       "adaptedInputs": {
         "crates/ui-egui/src/backstage.rs": "1eaf0c15a8b387dd0e659de62f5f8f3ca718fb0e159cbc9aedb742f7fa59da65",
         "crates/ui-egui/src/craft_fonts_policy.rs": "5ea2e06856ccfd65ccf54322a59bc2403e0cdd9a4993612232d89f997d5fec9f",
@@ -150,7 +150,7 @@
       "accent": "#CF747D",
       "category": "Viewer",
       "patch": "patches/pdfcraft.patch",
-      "patchSha256": "bd2d71145b7bf5159d632f274f3e8ebb9af8355dcd69d9b8ca3017cff5d991dd",
+      "patchSha256": "cf788157bd707ba651f86b560373acb3c9a017979ebf58e7408f95f894a1251e",
       "adaptedInputs": {
         "crates/ui-egui/src/app.rs": "77f2263abe474501c16dfb45a6152213e13b94cac867647b4a1871180f7c07a0",
         "crates/ui-egui/src/dialogs.rs": "3d4c0fb9fcc805e4247683df0c1d55020e9895254a3e55706e7e616121bb4f1f",
@@ -239,7 +239,7 @@
       "accent": "#C68D5F",
       "category": "Presentation",
       "patch": "patches/deckcraft.patch",
-      "patchSha256": "53ce3f0b1b5b49f6aa31c9e084c2c1a392d5e85e936ab8ef48c603e9c855e3ff",
+      "patchSha256": "c95cd3681418eed18f638f1d51bde2a02319759c9d5329190dbd90b76e8b6d75",
       "adaptedInputs": {
         "packaging/linux/ai.storyteller.deckcraft.mime.xml": "c3d96b105a96482ee89d8e79d4c5846af600009853cf82852bd4a8d774cea301",
         "crates/ui-egui/src/dialogs.rs": "1872e13592f1347937570cda1dd104e091b768faa096e900aa79698c97b6ffe0",
@@ -253,10 +253,7 @@
         "crates/ui-egui/src/backstage/tests.rs": "730bea4b331275f61cfc6e2458dcb6a9aefcf4c329b563cd36118dd580a0c889",
         "crates/ui-egui/src/dialogs/about.rs": "8f24be71ea1ffda27e1f4dae8912b59375d41dfd6574511c6a6d69e157a3e240",
         "crates/ui-egui/src/dialogs/find.rs": "ed2e84bf82f59a8168e87d8bd8d05593a88eddeca4c7f2b21bfdece3b099fbd3",
-        "crates/ui-egui/src/dialogs/photo_album.rs": "7189ecf71cff0cd47422799080ce77531f2622c7c3df5715dac6e78df1766c4f",
-        "crates/ui-egui/src/dialogs/theme_colors_tests.rs": "4c84ca01f8ebe37dc6afcb6b2e536b0c1a36a15314c142e7a3ea9b5a96bb053c",
         "crates/ui-egui/src/dialogs/updates_ui.rs": "4451b06fe27e1f19ba39020ac042a0b1d4a7cb1e7b45ffe58973f01e061e40e7",
-        "crates/ui-egui/src/ribbon/effects_tests.rs": "1d8d31ccad2ff5c20861905a715c5dfe278edbee39a554e7613b00a8133a3d2d",
         "crates/ui-egui/src/ribbon/title_bar.rs": "709ee60846db52727234221012161c89c109bbd41e20626d33bef14eade12068",
         "crates/ui-egui/src/show/presenter.rs": "291cf781e3e7587481413d5bca6992e651a725c64be5d84009625eb75c6b43c8",
         "apps/deckcraft/src/logging.rs": "0e58a94dadfaed4e957c6b8e94d1a99273d1e4524c726e01a4c66f332c0032dc",
@@ -300,7 +297,7 @@
     "packaging/greyward-office/artwork.py": "3a27ac82f6901f66671d51559a4db75f2fb0814488cbfb6d49fb8162e2fded05",
     "packaging/greyward-office/verify-inputs.py": "130836be977dfbf9b7d819aa2692a3ad2322d1c944b385c723bb15ef68595c75",
     "packaging/greyward-office/render-icons.py": "c9d80f131e14393a67a34e9c16b089b7e28a87658c8b27b4a465da30d190a7b7",
-    "packaging/greyward-office/resource_inputs.py": "050cc1aa04d7b1f66d75b2235b8d3f321339d072a6c3046c68d4fcbe5feb58b4",
+    "packaging/greyward-office/resource_inputs.py": "8b7eb9e2073ab97f982ff44fafdc24065169a622b0a7f5e60ac2bbb82f2af73a",
     "packaging/greyward-office/vendor_inputs.py": "a9091cd09308f41a351f23e3a0889bebe89a10342202a2c9d2734611c9894507"
   }
 }

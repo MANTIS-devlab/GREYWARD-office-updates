@@ -75,6 +75,7 @@ def brand_catalogs(tree, original, name):
     for catalog in (tree / 'locales').glob('*/*.tsv'):
         # The common catalogs serve other apps too; replace only this app's name.
         text = catalog.read_text(encoding='utf-8')
-        updated = text.replace(original, name)
+        updated = ''.join(line if any(token in line.casefold() for token in ('copyright', '©', 'contributors'))
+                          else line.replace(original, name) for line in text.splitlines(True))
         if text != updated:
             catalog.write_text(updated, encoding='utf-8', newline='\n')
