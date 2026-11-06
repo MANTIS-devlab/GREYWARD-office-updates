@@ -1,7 +1,7 @@
 {
   "attemptCycle": 1,
   "attemptRun": "42139608446",
-  "channelVerified": null,
+  "channelVerified": "office-f44-x86_64-g16",
   "completedCycle": 1,
   "current": "office-f44-x86_64-g16",
   "epoch": "2026-10-27T21:08:51Z",
