@@ -281,30 +281,30 @@ diff --git a/crates/ui-egui/src/dialogs/find.rs b/crates/ui-egui/src/dialogs/fin
 diff --git a/crates/ui-egui/src/dialogs/updates_ui.rs b/crates/ui-egui/src/dialogs/updates_ui.rs
 --- a/crates/ui-egui/src/dialogs/updates_ui.rs
 +++ b/crates/ui-egui/src/dialogs/updates_ui.rs
-@@ -24,15 +24,18 @@
+@@ -21,14 +21,17 @@
+     }
  }
  
- pub(crate) fn enable(app: &mut SlideApp) {
+-pub(crate) fn enable(app: &mut SlideApp) {
 -    app.updates_rt.enabled = true;
-+    let _ = app; // GREYWARD Update Center owns background update checks.
++pub(crate) fn enable(_app: &mut SlideApp) {
++    // GREYWARD Update Center owns background update checks.
  }
  
- /// Help > Check for Updates…: runs a check and reports the outcome either way.
- pub(crate) fn request_check(app: &mut SlideApp) {
+-/// Help > Check for Updates…: runs a check and reports the outcome either way.
+-pub(crate) fn request_check(app: &mut SlideApp) {
 -    if !matches!(app.updates_rt.updater.status(), Status::Checking) {
 -        app.updates_rt.check_requested = true;
--        app.updates_rt.result_open = true;
--    }
-+    let _ = app;
-+        #[cfg(not(target_arch = "wasm32"))]
-+        if let Err(error) = std::process::Command::new("/usr/bin/greyward-security-center-route")
-+            .arg("updates").spawn()
-+        {
-+            log::error!("Could not open GREYWARD Update Center: {error}");
-+        }
++/// Help > Check for Updates opens GREYWARD Update Center.
++pub(crate) fn request_check(_app: &mut SlideApp) {
++    #[cfg(not(target_arch = "wasm32"))]
++    if let Err(error) = std::process::Command::new("/usr/bin/greyward-security-center-route")
++        .arg("updates").spawn()
++    {
++        log::error!("Could not open GREYWARD Update Center: {error}");
+     }
  }
  
- pub(crate) fn tick(app: &mut SlideApp, ctx: &egui::Context) {
 diff --git a/crates/ui-egui/src/ribbon/title_bar.rs b/crates/ui-egui/src/ribbon/title_bar.rs
 --- a/crates/ui-egui/src/ribbon/title_bar.rs
 +++ b/crates/ui-egui/src/ribbon/title_bar.rs

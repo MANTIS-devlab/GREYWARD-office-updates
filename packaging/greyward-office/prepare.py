@@ -3,7 +3,6 @@
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -13,6 +12,7 @@ import urllib.error
 import urllib.request
 
 from artwork import document_mime
+from automation.model import exact_adaptations
 from resource_inputs import validate_record, validate_fonts, declared_fonts, declared_language, brand_catalogs
 
 # Byte-identical mirrors of the two reviewed upstream OCR inputs. The original
@@ -97,9 +97,9 @@ def prepare(repo, cache, output, slug):
     patch = repo / 'packaging/greyward-office' / app['patch']
     if digest(patch) != app['patchSha256']:
         raise ValueError('Unreviewed adaptation')
-    patch_env = dict(os.environ, GIT_CEILING_DIRECTORIES=str(tree.resolve().parent))
-    subprocess.run(['git', 'apply', '--check', str(patch.resolve())], cwd=tree, env=patch_env, check=True)
-    subprocess.run(['git', 'apply', str(patch.resolve())], cwd=tree, env=patch_env, check=True)
+    adapted = exact_adaptations(patch.read_bytes(), {name: (tree / name).read_bytes() for name in app['adaptedInputs']})
+    for name, data in adapted.items():
+        (tree / name).write_bytes(data)
     if app.get('mimeSource') and digest(tree / app['mimeSource']) != app['mimeSha256']:
         raise ValueError('MIME definition drift')
     fonts = next(f for f in manifest['fonts'] if f['commit'] == app['fontsCommit'])

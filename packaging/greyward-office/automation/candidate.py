@@ -18,7 +18,7 @@ from pathlib import PurePosixPath
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from prepare import digest, extract, verified_file
 from upstream import discover, request_json, stable_release
-from model import exact_adaptations
+from automation.model import exact_adaptations
 from notice import review_notice
 from resource_inputs import declared_fonts, declared_language, validate_record, validate_fonts
 
@@ -92,14 +92,58 @@ def extract_release(archive, destination, root_name):
     return extract(archive, destination, root_name)
 
 
-def adapt(app, old_tree, tree, patch):
+def review_license_inventory(old_tree, tree, allowed_licenses):
+    """Preserve reviewed terms while accepting verified supplementary notices."""
+    previous_file, current_file = (root / 'LICENSES.toml' for root in (old_tree, tree))
+    before = previous_file.read_bytes() if previous_file.is_file() else None
+    after = current_file.read_bytes() if current_file.is_file() else None
+    if before == after:
+        return
+    if not before or not after:
+        raise ValueError('Upstream license inventory added or removed; review required')
+    previous, current = (tomllib.loads(data.decode('utf-8')) for data in (before, after))
+    if set(previous) != {'document', 'bundled'} or set(current) != set(previous):
+        raise ValueError('Upstream license inventory structure changed; review required')
+
+    documents = {row['source']: row for row in current['document']}
+    if len(documents) != len(current['document']):
+        raise ValueError('Duplicate sources in upstream license inventory')
+    destinations = {row['destination'] for row in current['document']}
+    for old in previous['document']:
+        existing = documents.pop(old['source'], None)
+        if old['source'] == 'NOTICE' and existing:
+            old = {**old, 'sha256': digest(tree / 'NOTICE')}
+        if existing != old:
+            raise ValueError('Reviewed license document changed: ' + old['source'])
+    for name, row in documents.items():
+        source = PurePosixPath(name)
+        destination = PurePosixPath(row['destination'])
+        if (source.is_absolute() or destination.is_absolute()
+                or '..' in source.parts or '..' in destination.parts
+                or '\\\\' in name or '\\\\' in row['destination']
+                or not row['licences'] or not set(row['licences']) <= allowed_licenses
+                or not (tree / name).is_file() or digest(tree / name) != row['sha256']):
+            raise ValueError('New license document requires review: ' + name)
+    bundled = {row['path']: row for row in current['bundled']}
+    if len(bundled) != len(current['bundled']):
+        raise ValueError('Duplicate bundled assets in upstream license inventory')
+    for old in previous['bundled']:
+        if bundled.pop(old['path'], None) != old:
+            raise ValueError('Reviewed bundled license changed: ' + old['path'])
+    for path, row in bundled.items():
+        if row['licence'] not in allowed_licenses or not row['documents'] or not set(row['documents']) <= destinations:
+            raise ValueError('New bundled license requires review: ' + path)
+
+
+def adapt(app, old_tree, tree, patch, allowed_licenses=frozenset()):
     if digest(old_tree / 'NOTICE') != app['noticeSha256']:
         raise ValueError('Reviewed upstream NOTICE does not match its source lock')
     review_notice((old_tree / 'NOTICE').read_bytes(), (tree / 'NOTICE').read_bytes())
-    old_licenses = {p.name: digest(p) for p in old_tree.glob('LICENSE*') if p.is_file()}
-    new_licenses = {p.name: digest(p) for p in tree.glob('LICENSE*') if p.is_file()}
+    old_licenses = {p.name: digest(p) for p in old_tree.glob('LICENSE*') if p.is_file() and p.name != 'LICENSES.toml'}
+    new_licenses = {p.name: digest(p) for p in tree.glob('LICENSE*') if p.is_file() and p.name != 'LICENSES.toml'}
     if not old_licenses or old_licenses != new_licenses:
         raise ValueError('Upstream license changed; review required')
+    review_license_inventory(old_tree, tree, allowed_licenses)
     brand_license = Path('docs/brand/LICENSE-brand.txt')
     old_brand, new_brand = old_tree / brand_license, tree / brand_license
     if (old_brand.exists() != new_brand.exists()
@@ -118,17 +162,10 @@ def adapt(app, old_tree, tree, patch):
         if declared != app['runtimeResources']:
             raise ValueError('OCR model input changed; review required')
     original = {name: (tree / name).read_bytes() for name in app['adaptedInputs']}
-    expected = exact_adaptations(patch.read_bytes(), original)
+    adapted = exact_adaptations(patch.read_bytes(), original)
     hashes = {name: digest(tree / name) for name in original}
-    git = ['git', '-c', 'core.autocrlf=false', '-c', 'core.eol=lf', 'apply']
-    # Source scratch directories may live inside the engineering checkout.
-    # Do not let git discover that parent repository and silently skip hunks
-    # relative to its prefix. No .git directory is created in upstream sources.
-    env = dict(os.environ, GIT_CEILING_DIRECTORIES=str(tree.resolve().parent))
-    subprocess.run([*git, '--check', str(patch.resolve())], cwd=tree, env=env, check=True)
-    subprocess.run([*git, str(patch.resolve())], cwd=tree, env=env, check=True)
-    if any((tree / name).read_bytes() != expected[name] for name in original):
-        raise ValueError('git apply differed from the unique exact transformations')
+    for name, data in adapted.items():
+        (tree / name).write_bytes(data)
     return hashes
 
 
@@ -181,6 +218,8 @@ def prepare_family(repo, cache, output, bootstrap=False, generation=None):
     (output / 'discovery.json').write_text(json.dumps(report, indent=2) + '\n')
     cache.mkdir(parents=True, exist_ok=True)
     result = copy.deepcopy(manifest)
+    dependency_policy = repo / 'packaging/greyward-office/automation/dependency-policy.json'
+    allowed_licenses = set(json.loads(dependency_policy.read_text())['allowedExpressions']) if dependency_policy.is_file() else set()
     changed = []
     notice_updates = []
     for app in result['applications']:
@@ -200,7 +239,10 @@ def prepare_family(repo, cache, output, bootstrap=False, generation=None):
             old_tree = extract_release(old_archive, scratch / 'old', app['upstream'] + '-' + app['commit'])
             tree = extract_release(archive, scratch / 'new', app['upstream'] + '-' + commit)
             refresh_data(app, result, tree, cache, scratch)
-            app['adaptedInputs'] = adapt(app, old_tree, tree, patch)
+            try:
+                app['adaptedInputs'] = adapt(app, old_tree, tree, patch, allowed_licenses)
+            except (OSError, ValueError) as error:
+                raise ValueError(f"{app['slug']} {release['tag']}: {error}") from error
             notice = review_notice((old_tree / 'NOTICE').read_bytes(), (tree / 'NOTICE').read_bytes())
             app['noticeSha256'] = notice['newSha256']
             if notice['changed']:

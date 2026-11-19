@@ -155,53 +155,89 @@ def cleanup_plan(policy, state, releases, now):
     return result
 
 
-def exact_adaptations(patch, files):
-    """Apply only unique verbatim reviewed hunks; no fuzzy/regex substitutions.
+def unique_line_offset(source, text):
+    matches = re.finditer(rb'(?m)^(?=' + re.escape(text) + rb')', source)
+    first = next(matches, None)
+    if next(matches, None) is not None:
+        raise ValueError('Ambiguous exact adaptation')
+    return None if first is None else first.start()
 
-    Offset-only upstream changes outside a hunk are permitted. Any missing or
-    ambiguous hunk, path change, unsupported patch syntax or binary edit blocks.
-    Return expected output bytes; caller must compare with real git apply output.
-    """
+
+def adaptation_edit(source, lines):
+    before = b''.join(line[1:] for line in lines if line[:1] != b'+')
+    after = b''.join(line[1:] for line in lines if line[:1] != b'-')
+    start = next((i for i, line in enumerate(lines) if line[:1] != b' '), None)
+    if start is None or not before:
+        raise ValueError('Adaptation needs a change and original lines')
+    end = next(i for i, line in enumerate(reversed(lines)) if line[:1] != b' ')
+    prefix = sum(len(line) - 1 for line in lines[:start])
+    suffix = sum(len(line) - 1 for line in lines[len(lines) - end:])
+    removed = before[prefix:len(before) - suffix]
+    inserted = after[prefix:len(after) - suffix]
+    offset = unique_line_offset(source, before)
+    if offset is not None:
+        return offset + prefix, removed, inserted
+    # Surrounding lines belong to upstream. Require all lines within the
+    # reviewed replacement to match exactly at a single location in this file.
+    # Insertions without replaced lines still require their complete context.
+    if removed:
+        offset = unique_line_offset(source, removed)
+        if offset is not None:
+            return offset, removed, inserted
+    raise ValueError('Missing exact adaptation')
+
+
+def exact_adaptations(patch, files):
+    """Replay reviewed line edits, tolerating drift outside a unique edit span."""
     lines = patch.decode('utf-8').splitlines(keepends=True)
-    output = dict(files)
+    edits = {}
     current = None
-    covered = set()
     i = 0
     while i < len(lines):
         line = lines[i]
         if line.startswith('diff --git '):
             match = re.fullmatch(r'diff --git a/([^\s]+) b/([^\s]+)\n', line)
-            if not match or match[1] != match[2] or match[1] not in files:
-                raise ValueError('Unapproved patch path')
+            if not match or match[1] != match[2] or match[1] not in files or match[1] in edits:
+                raise ValueError('Unapproved or repeated patch path')
             current = match[1]
             if current.startswith('/') or '..' in current.split('/') or '\\' in current:
                 raise ValueError('Unsafe patch path')
-            covered.add(current)
+            edits[current] = []
         elif line.startswith('@@ '):
             if current is None:
                 raise ValueError('Patch hunk without file')
             match = re.fullmatch(r'@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@[^\n]*\n', line)
             if not match:
                 raise ValueError('Malformed hunk')
-            old, new = [], []
+            hunk = []
             i += 1
             while i < len(lines) and not lines[i].startswith(('@@ ', 'diff --git ')):
                 item = lines[i]
-                if item[:1] not in (' ', '+', '-'):
+                if item[:1] not in (' ', '+', '-') or not item.endswith('\n'):
                     raise ValueError('Unsupported patch content')
-                if item[0] in ' -': old.append(item[1:])
-                if item[0] in ' +': new.append(item[1:])
+                hunk.append(item.encode())
                 i += 1
-            if len(old) != int(match[2] if match[2] is not None else 1) or len(new) != int(match[4] if match[4] is not None else 1):
+            if (sum(row[:1] != b'+' for row in hunk) != int(match[2] or 1)
+                    or sum(row[:1] != b'-' for row in hunk) != int(match[4] or 1)):
                 raise ValueError('Patch hunk length mismatch')
-            before, after = ''.join(old).encode(), ''.join(new).encode()
-            if not before or output[current].count(before) != 1:
-                raise ValueError('Missing or ambiguous exact adaptation: ' + current)
-            output[current] = output[current].replace(before, after, 1)
+            try:
+                offset, removed, inserted = adaptation_edit(files[current], hunk)
+            except ValueError as error:
+                raise ValueError(f'{error}: {current} (reviewed line {match[1]})') from error
+            if edits[current]:
+                previous_offset, previous_removed, _ = edits[current][-1]
+                if offset <= previous_offset or offset < previous_offset + len(previous_removed):
+                    raise ValueError('Overlapping or reordered adaptations: ' + current)
+            edits[current].append((offset, removed, inserted))
             continue
         elif not line.startswith(('index ', '--- a/', '+++ b/')):
             raise ValueError('Unsupported patch header')
         i += 1
-    if covered != set(files):
+    if edits.keys() != files.keys() or not all(edits.values()):
         raise ValueError('Adaptation inventory does not match reviewed patch paths')
+    output = {}
+    for path, source in files.items():
+        for offset, removed, inserted in reversed(edits[path]):
+            source = source[:offset] + inserted + source[offset + len(removed):]
+        output[path] = source
     return output

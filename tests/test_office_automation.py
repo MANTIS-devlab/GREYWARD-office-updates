@@ -114,9 +114,32 @@ class CompatibilityTests(unittest.TestCase):
             result = model.exact_adaptations(self.PATCH, {'src/main.rs': prefix + self.ORIGINAL})
             self.assertEqual(result['src/main.rs'], prefix + self.ORIGINAL.replace(b'ArtCraft', b'GREYWARD'))
 
-    def test_changed_or_ambiguous_context_blocks(self):
+    def test_changed_or_ambiguous_edit_blocks(self):
         for value in (self.ORIGINAL.replace(b'ArtCraft', b'NewTitle'), self.ORIGINAL * 2):
             with self.assertRaises(ValueError): model.exact_adaptations(self.PATCH, {'src/main.rs': value})
+
+    def test_adjacent_upstream_edits_are_preserved(self):
+        source = b'fn main() -> i32 {\n    title("ArtCraft");\n    0\n}\n'
+        result = model.exact_adaptations(self.PATCH, {'src/main.rs': source})
+        self.assertEqual(result['src/main.rs'], source.replace(b'ArtCraft', b'GREYWARD'))
+
+    def test_missing_context_does_not_pick_a_duplicate_or_partial_line(self):
+        for source in (b'fn changed() {\n    title("ArtCraft");\n    title("ArtCraft");\n}\n',
+                       b'fn changed() {\n        title("ArtCraft");\n}\n'):
+            with self.subTest(source=source), self.assertRaises(ValueError):
+                model.exact_adaptations(self.PATCH, {'src/main.rs': source})
+
+    def test_insertion_requires_unchanged_context(self):
+        patch = self.PATCH.replace(b'-    title("ArtCraft");\n', b'     title("ArtCraft");\n')
+        patch = patch.replace(b'@@ -1,3 +1,3', b'@@ -1,3 +1,4')
+        self.assertIn(b'GREYWARD', model.exact_adaptations(patch, {'src/main.rs': self.ORIGINAL})['src/main.rs'])
+        with self.assertRaisesRegex(ValueError, 'Missing exact adaptation'):
+            model.exact_adaptations(patch, {'src/main.rs': self.ORIGINAL.replace(b'fn main', b'fn changed')})
+
+    def test_overlapping_edits_are_rejected_before_any_change(self):
+        hunk = self.PATCH[self.PATCH.index(b'@@ '):]
+        with self.assertRaisesRegex(ValueError, 'Overlapping or reordered'):
+            model.exact_adaptations(self.PATCH + hunk, {'src/main.rs': self.ORIGINAL})
 
     def test_inventory_and_path_drift_block(self):
         with self.assertRaises(ValueError): model.exact_adaptations(self.PATCH, {'other.rs': self.ORIGINAL})
@@ -126,7 +149,7 @@ class CompatibilityTests(unittest.TestCase):
         for patch in (self.PATCH.replace(b'@@ -1,3 +1,3', b'@@ -1,9 +1,9'), self.PATCH + b'Binary files differ\n'):
             with self.assertRaises(ValueError): model.exact_adaptations(patch, {'src/main.rs': self.ORIGINAL})
 
-    def test_real_git_apply_matches_exact_offset_transform_and_blocks_license_drift(self):
+    def test_candidate_applies_exact_edit_and_blocks_license_drift(self):
         from candidate import adapt
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary); old, new = root / 'old', root / 'new'
@@ -147,6 +170,39 @@ class CompatibilityTests(unittest.TestCase):
             self.assertIn(b'GREYWARD',(new/'src/main.rs').read_bytes())
             (new/'LICENSE').write_bytes(b'Different license\n')
             with self.assertRaisesRegex(ValueError,'license changed'): adapt(app,old,new,patchfile)
+
+    def test_license_inventory_accepts_hash_checked_additions(self):
+        from candidate import review_license_inventory
+        with tempfile.TemporaryDirectory() as temporary:
+            old, new = (Path(temporary) / name for name in ('old', 'new'))
+            for tree in (old, new):
+                tree.mkdir()
+                (tree / 'NOTICE').write_bytes(b'Attribution\n')
+            notice_hash = hashlib.sha256(b'Attribution\n').hexdigest()
+            license_text = b'Unicode supplemental text\n'
+            license_hash = hashlib.sha256(license_text).hexdigest()
+            stable = f"""bundled = []
+[[document]]
+source = "NOTICE"
+destination = "NOTICE"
+sha256 = "{notice_hash}"
+"""
+            addition = f"""
+[[document]]
+source = "UNICODE-LICENSE.txt"
+destination = "UNICODE-LICENSE.txt"
+licences = ["Unicode-3.0"]
+sha256 = "{license_hash}"
+"""
+            (old / 'LICENSES.toml').write_text(stable)
+            (new / 'LICENSES.toml').write_text(stable + addition)
+            (new / 'UNICODE-LICENSE.txt').write_bytes(license_text)
+            review_license_inventory(old, new, {'Unicode-3.0'})
+            with self.assertRaisesRegex(ValueError, 'requires review'):
+                review_license_inventory(old, new, {'MIT'})
+            (new / 'UNICODE-LICENSE.txt').write_bytes(b'different bytes')
+            with self.assertRaisesRegex(ValueError, 'requires review'):
+                review_license_inventory(old, new, {'Unicode-3.0'})
 
     def test_pristine_mime_is_compared_before_patch_not_against_installed_hash(self):
         from candidate import adapt

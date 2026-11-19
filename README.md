@@ -21,4 +21,11 @@ moves one application at a time into a private draft and removes the Actions
 artifact; signing is a different job. Native DNF verification and a pinned
 public key gate the channel. Failed compatibility checks keep the prior version.
 
+The same adaptation code checks candidates and builds RPMs. Changes in the
+surrounding lines are accepted when the reviewed edit still matches exactly and
+uniquely in the same file. Insertions require their original context. Update
+comparison also keeps and verifies new notices for already approved third-party
+license terms. Changes to reviewed terms or ambiguous adaptations require review.
+
+
 This repository is a reviewed component export of [GREYWARD](https://github.com/MANTIS-devlab/GREYWARD), not a development-machine image.

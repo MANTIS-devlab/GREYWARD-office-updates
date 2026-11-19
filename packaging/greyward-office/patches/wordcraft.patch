@@ -383,63 +383,6 @@ diff --git a/crates/ui-egui/src/app/commands.rs b/crates/ui-egui/src/app/command
                  self.status(msg.clone());
                  Err(msg)
              }
-diff --git a/crates/ui-egui/src/canvas/tests.rs b/crates/ui-egui/src/canvas/tests.rs
---- a/crates/ui-egui/src/canvas/tests.rs
-+++ b/crates/ui-egui/src/canvas/tests.rs
-@@ -340,7 +340,7 @@
-     assert_eq!(caret_contrast(Rgb(0x33, 0x33, 0x33)), Color32::WHITE, "dark paper");
-     assert_eq!(caret_contrast(Rgb(0xC0, 0xC0, 0xC0)), Color32::BLACK, "light grey");
- 
--    let doc = wordcraft_doc::Document::from_text("Hello WordCraft");
-+    let doc = wordcraft_doc::Document::from_text("Hello Writer");
-     let mut a = WordApp::new(wordcraft_engine::Session::new(doc), Default::default());
-     let at = |a: &mut WordApp, off: usize| {
-         let layout = a.session.layout();
-@@ -368,7 +368,7 @@
- #[test]
- fn read_mode_page_color_sets_the_reading_paper() {
-     use wordcraft_doc::props::Rgb;
--    let mut a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::from_text("Hello WordCraft")), Default::default());
-+    let mut a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::from_text("Hello Writer")), Default::default());
-     a.run("design.pageColor", json!({"color": "#102040"})).unwrap();
-     let paper = |a: &WordApp| page_render_options(a, false).paper_of(&a.session.doc);
-     assert_eq!(paper(&a), Rgb(0x10, 0x20, 0x40), "Print Layout shows the page color");
-@@ -411,7 +411,7 @@
- #[test]
- fn drawing_over_the_pages_follows_the_read_mode_page_color() {
-     use wordcraft_doc::props::Rgb;
--    let mut a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::from_text("Hello WordCraft")), Default::default());
-+    let mut a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::from_text("Hello Writer")), Default::default());
-     a.run("design.pageColor", json!({"color": "#102040"})).unwrap();
-     let blank = |a: &WordApp| page_render_options(a, false).blank_paper();
-     let grey = Rgb(wordcraft_render::DARK_PAPER, wordcraft_render::DARK_PAPER, wordcraft_render::DARK_PAPER);
-@@ -437,7 +437,7 @@
- /// there is no caret, so the page's draw list isn't built for it.
- #[test]
- fn caret_colour_is_not_worked_out_while_the_caret_is_hidden() {
--    let mut a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::from_text("Hello WordCraft")), Default::default());
-+    let mut a = WordApp::new(wordcraft_engine::Session::new(wordcraft_doc::Document::from_text("Hello Writer")), Default::default());
-     a.run("select.text", json!({"text": "Hello"})).unwrap();
-     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1440.0, 900.0)).build_ui_state(
-         |ui, app: &mut WordApp| {
-@@ -1520,7 +1520,7 @@
- }
- 
- fn assert_balloon_timestamp(when: &str) {
--    assert_eq!(when.len(), 16, "WordCraft comments carry a local YYYY-MM-DD HH:MM timestamp: {when:?}");
-+    assert_eq!(when.len(), 16, "Writer comments carry a local YYYY-MM-DD HH:MM timestamp: {when:?}");
-     let b = when.as_bytes();
-     assert_eq!((b.get(4), b.get(7), b.get(10), b.get(13)), (Some(&b'-'), Some(&b'-'), Some(&b' '), Some(&b':')), "timestamp separators: {when:?}");
-     assert!(b.iter().enumerate().all(|(i, c)| matches!(i, 4 | 7 | 10 | 13) || c.is_ascii_digit()), "timestamp fields are digits: {when:?}");
-@@ -4842,7 +4842,7 @@
- /// the preview follows the pointer, and the object shows twice.
- #[test]
- fn the_view_key_changes_when_a_drag_takes_an_object_off_the_page() {
--    let doc = wordcraft_doc::Document::from_text("Hello WordCraft");
-+    let doc = wordcraft_doc::Document::from_text("Hello Writer");
-     let app = WordApp::new(wordcraft_engine::Session::new(doc), Default::default());
-     let object = Pos::body(0, 5);
-     let hidden = view_key(&app, false, Some(&object));
 diff --git a/crates/ui-egui/src/dialogs/chrome.rs b/crates/ui-egui/src/dialogs/chrome.rs
 --- a/crates/ui-egui/src/dialogs/chrome.rs
 +++ b/crates/ui-egui/src/dialogs/chrome.rs
@@ -491,45 +434,6 @@ diff --git a/crates/ui-egui/src/i18n/audit.rs b/crates/ui-egui/src/i18n/audit.rs
              || plain == "CONFIDENTIAL" // the watermark dialog's text: document content, kept as typed
              || plain == "Figure 1" // the caption dialog's sample: the label goes into the document as is
      }
-diff --git a/crates/ui-egui/src/i18n/tests.rs b/crates/ui-egui/src/i18n/tests.rs
---- a/crates/ui-egui/src/i18n/tests.rs
-+++ b/crates/ui-egui/src/i18n/tests.rs
-@@ -730,7 +730,7 @@
-     let ctx = egui::Context::default();
-     let frame = |app: &mut crate::WordApp| ctx.run_ui(egui::RawInput::default(), |ui| app.logic(ui.ctx())).drop_without_applying_deltas();
-     frame(&mut app);
--    assert_eq!(app.session.editing_lang, None, "English interface: WordCraft's default, US English");
-+    assert_eq!(app.session.editing_lang, None, "English interface: Writer's default, US English");
-     assert_eq!(app.session.doc.styles.default_chr.lang.as_deref(), Some("en-US"));
-     app.run("ui.language", serde_json::json!({"value": "pl"})).unwrap();
-     frame(&mut app);
-@@ -1170,7 +1170,7 @@
-         return;
-     }
-     let listed: Vec<&str> = LANGUAGES.iter().map(|l| l.code).collect();
--    assert_eq!(all, listed, "every language WordCraft lists has its catalog in craft-i18n");
-+    assert_eq!(all, listed, "every language Writer lists has its catalog in craft-i18n");
-     assert!(Lang::from_code("pseudo").is_none(), "the pseudo locale is never a setting");
- }
- 
-@@ -1233,7 +1233,7 @@
-     let ar = arabic_fixture(concat!(
-         "\tTable of Contents\tجدول المحتويات\n",
-         "\tPaste Special…\tلصق خاص…\n",
--        "\tAbout WordCraft\tحول WordCraft\n",
-+        "\tAbout Writer\tحول Writer\n",
-         "\tPassword:\tكلمة المرور:\n",
-         "\tTable of\\nContents\tجدول\\nالمحتويات\n",
-         "\tPage {page} of {pages}\tالصفحة {page} من {pages}\n",
-@@ -1245,7 +1245,7 @@
-     assert!(ar.rtl());
-     assert_eq!(tr(ar, "Table of Contents"), "جدول المحتويات");
-     assert_eq!(tr(ar, "Paste Special…"), "لصق خاص…");
--    assert_eq!(tr(ar, "About WordCraft"), "حول WordCraft");
-+    assert_eq!(tr(ar, "About Writer"), "حول Writer");
-     assert_eq!(tr(ar, "Password:"), "كلمة المرور:");
-     // A two-line ribbon label keeps its two lines.
-     assert_eq!(tr(ar, "Table of\nContents"), "جدول\nالمحتويات");
 diff --git a/crates/ui-egui/src/options/tests.rs b/crates/ui-egui/src/options/tests.rs
 --- a/crates/ui-egui/src/options/tests.rs
 +++ b/crates/ui-egui/src/options/tests.rs

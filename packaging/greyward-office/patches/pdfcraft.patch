@@ -385,15 +385,15 @@ diff --git a/crates/ui-egui/src/workflows/js_ui.rs b/crates/ui-egui/src/workflow
 diff --git a/crates/ui-egui/src/workflows/ocr_ui.rs b/crates/ui-egui/src/workflows/ocr_ui.rs
 --- a/crates/ui-egui/src/workflows/ocr_ui.rs
 +++ b/crates/ui-egui/src/workflows/ocr_ui.rs
-@@ -148,7 +148,7 @@
-     });
-     if !available {
-         ui.label(
--            egui::RichText::new(tl!("Text recognition isn't installed: its model files are missing. Reinstall PdfCraft, or set PDFCRAFT_MODELS to the folder that holds them."))
-+            egui::RichText::new(tl!("Text recognition isn't installed: its model files are missing. Reinstall PDF, or set PDFCRAFT_MODELS to the folder that holds them."))
-                 .small()
-                 .color(t.text_muted),
-         );
+@@ -392,7 +392,7 @@
+         // notice users know; Tesseract's reasons are catalog keys of their own.
+         let text = match d.engine {
+             pdfcraft_engine::ocr::EngineChoice::Tesseract => crate::i18n::t(&why).to_string(),
+-            _ => tl!("Text recognition isn't installed: its model files are missing. Reinstall PdfCraft, or set PDFCRAFT_MODELS to the folder that holds them.")
++            _ => tl!("Text recognition isn't installed: its model files are missing. Reinstall PDF, or set PDFCRAFT_MODELS to the folder that holds them.")
+                 .to_string(),
+         };
+         ui.label(egui::RichText::new(text).small().color(t.text_muted));
 diff --git a/crates/ui-egui/src/workflows/web_print.rs b/crates/ui-egui/src/workflows/web_print.rs
 --- a/crates/ui-egui/src/workflows/web_print.rs
 +++ b/crates/ui-egui/src/workflows/web_print.rs
@@ -580,15 +580,3 @@ diff --git a/apps/pdfcraft/src/single_instance.rs b/apps/pdfcraft/src/single_ins
  }
  
  /// Accept launches on a background thread for as long as the process runs.
-diff --git a/apps/pdfcraft/src/tests.rs b/apps/pdfcraft/src/tests.rs
---- a/apps/pdfcraft/src/tests.rs
-+++ b/apps/pdfcraft/src/tests.rs
-@@ -422,7 +422,7 @@
-     // The audited W1 hunk itself, not merely the file's presence: Windows 11 applies the
-     // rect Windows suggests, while Windows 10 keeps the old adjustment.
-     for marker in [
--        "PdfCraft patch: from Windows 11 (build 22000) on, apply the rect Windows suggests",
-+        "PDF patch: from Windows 11 (build 22000) on, apply the rect Windows suggests",
-         "if !WIN10_BUILD_VERSION.is_some_and(|build| build < 22000) {",
-         "new_outer_rect = suggested_rect;",
-     ] {
