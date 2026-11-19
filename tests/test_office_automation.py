@@ -468,8 +468,10 @@ class SealingTests(unittest.TestCase):
         from seal import check_dependencies
         policy=json.loads((AUTOMATION/'dependency-policy.json').read_text())
         check_dependencies(policy,[{'name':'known','license':'MIT','source':'registry'}])
-        for value in ('Unknown-License',None):
-            with self.assertRaises(ValueError):check_dependencies(policy,[{'name':'new','license':value,'source':'registry'}])
+        check_dependencies(policy, [{'name': 'seccompiler', 'license': 'Apache-2.0 OR BSD-3-Clause', 'source': 'registry'}])
+        for value in ('Unknown-License', 'MIT OR Unknown-License', 'MIT AND BSD-3-Clause', None):
+            with self.subTest(license=value), self.assertRaises(ValueError):
+                check_dependencies(policy, [{'name': 'new', 'license': value, 'source': 'registry'}])
 
     def test_source_archive_cannot_overwrite_comparison_tree_or_install_git_metadata(self):
         from candidate import extract_release

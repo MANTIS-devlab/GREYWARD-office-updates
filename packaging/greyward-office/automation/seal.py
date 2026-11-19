@@ -117,11 +117,20 @@ def verify_family(repo, rpms):
 def check_dependencies(policy, records):
     if policy.get('schema') != 'greyward.office-dependency-policy/v1' or not isinstance(records, list) or not records:
         raise ValueError('Dependency license inventory unavailable')
+    allowed = set(policy['allowedExpressions'])
     for record in records:
         expression = record.get('license')
-        if expression in policy['allowedExpressions']: continue
-        if expression is None and record.get('source') is None and record.get('name') in policy['unlicensedWorkspace']: continue
-        raise ValueError('New/unknown dependency license requires review: ' + str(record.get('name')))
+        if isinstance(expression, str):
+            if expression in allowed:
+                continue
+            # A new OR of individually reviewed SPDX identifiers adds no terms.
+            # Require review for unknown identifiers, exceptions or new ANDs.
+            if (re.fullmatch(r'[A-Za-z0-9.+-]+(?: OR [A-Za-z0-9.+-]+)+', expression)
+                    and set(expression.split(' OR ')) <= allowed):
+                continue
+        if expression is None and record.get('source') is None and record.get('name') in policy['unlicensedWorkspace']:
+            continue
+        raise ValueError(f"New/unknown dependency license requires review: {record.get('name')} ({expression!r})")
 
 
 def seal(repo, incoming, candidate, output):
