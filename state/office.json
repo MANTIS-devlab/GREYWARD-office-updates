@@ -27,7 +27,12 @@
   "lastVerifiedAt": "2026-11-06T01:59:45Z",
   "metadataCommit": "75d416f63d30115fea0668b5417e16f16a6882a8",
   "nextGeneration": 28,
-  "pending": null,
+  "pending": {
+    "createdAt": "2026-11-19T07:33:50Z",
+    "releaseId": 451010358,
+    "tag": "office-f44-x86_64-g27",
+    "tagCommit": "b5eb732e4b4649bba0a1a5d5a2f9e4a6558fe4d8"
+  },
   "reservedGeneration": 27,
   "schema": "greyward.office-automation-state/v1",
   "sourceManifestSha256": "2631ae54ee5f04c1d906a3c868bfdcbb9737ce9f7d84ddcbf760fdb72de3278b"
