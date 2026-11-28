@@ -1,6 +1,6 @@
 {
   "attemptCycle": 5,
-  "attemptRun": "45927333226",
+  "attemptRun": "46099683084",
   "channelVerified": "office-f44-x86_64-g16",
   "completedCycle": 1,
   "current": "office-f44-x86_64-g16",
@@ -23,12 +23,12 @@
       "tagCommit": "502885831a00b62f60c954a1b82b83e8f75277c6"
     }
   ],
-  "lastAttempt": "2026-11-27T02:16:20Z",
+  "lastAttempt": "2026-11-28T02:46:26Z",
   "lastVerifiedAt": "2026-11-06T01:59:45Z",
   "metadataCommit": "75d416f63d30115fea0668b5417e16f16a6882a8",
-  "nextGeneration": 33,
+  "nextGeneration": 34,
   "pending": null,
-  "reservedGeneration": 32,
+  "reservedGeneration": 33,
   "schema": "greyward.office-automation-state/v1",
   "sourceManifestSha256": "2631ae54ee5f04c1d906a3c868bfdcbb9737ce9f7d84ddcbf760fdb72de3278b"
 }
